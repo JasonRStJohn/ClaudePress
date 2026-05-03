@@ -1,0 +1,44 @@
+# Base compose file for ClaudePress sites.
+# Consuming sites create their own compose.yml that extends this one:
+#
+#   # your-site/compose.yml
+#   services:
+#     backend:
+#       extends:
+#         file: ../ClaudePress/compose.base.yml
+#         service: backend
+#       volumes:
+#         - ./pb_data:/pb/pb_data
+#     frontend:
+#       extends:
+#         file: ../ClaudePress/compose.base.yml
+#         service: frontend
+#       environment:
+#         NUXT_PUBLIC_SITE_NAME: My Site
+#         NUXT_PUBLIC_PB_URL: http://localhost:8090
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    environment:
+      NUXT_REVALIDATE_URL: http://frontend:3000/api/revalidate
+      NUXT_REVALIDATE_SECRET: ${REVALIDATE_SECRET:-dev-secret-change-me}
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      POCKETBASE_URL: http://backend:8090
+      NUXT_PUBLIC_PB_URL: ${NUXT_PUBLIC_PB_URL:-http://localhost:8090}
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET:-dev-secret-change-me}
