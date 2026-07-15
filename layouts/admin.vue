@@ -73,8 +73,8 @@
 
 <script setup lang="ts">
 const { currentUser, logout } = useAuth()
-const config = useRuntimeConfig()
-const siteName = config.public.siteName
+const settings = await useSettings()
+const siteName = settings?.site_name || useRuntimeConfig().public.siteName
 const route = useRoute()
 
 const sidebarOpen = ref(false)
