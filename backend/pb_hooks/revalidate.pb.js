@@ -6,9 +6,12 @@
 function revalidate(e) {
   // Declared inside the handler: PocketBase runs each hook event in an
   // isolated JS context, so module-level vars aren't visible here.
+  // '*' means "site-wide" — settings and navigation render into the header/
+  // footer on every page (see layouts/default.vue), not just '/', so a
+  // change must purge every cached route, not one path.
   const PATHS_FOR = {
-    settings:            ['/'],
-    navigation:          ['/'],
+    settings:            ['*'],
+    navigation:          ['*'],
     pages:               ['/'],
     posts:               ['/blog', '/'],
     post_categories:     ['/blog'],

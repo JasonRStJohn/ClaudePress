@@ -28,11 +28,21 @@ export default defineEventHandler(async (event) => {
   // the `x-nitro-prerender` header, but the supported API is simpler:
   // delete the cached entries directly from storage.
   const storage = useStorage('cache')
+  const keys = await storage.getKeys(`nitro:functions`)
+
+  // '*' means site-wide content changed (settings, navigation render into
+  // every page's header/footer) — purge every cached route, not one path.
+  if (paths.includes('*')) {
+    for (const key of keys) {
+      await storage.removeItem(key)
+    }
+    return { ok: true, revalidated: keys.length, paths: ['*'] }
+  }
+
   let count = 0
   for (const path of paths) {
     // ISR cache keys look like: nitro:functions:_nitro_isr:<path>.json
     // We use a broad prefix match to be safe across nitro versions.
-    const keys = await storage.getKeys(`nitro:functions`)
     for (const key of keys) {
       if (key.includes(path)) {
         await storage.removeItem(key)
