@@ -81,6 +81,7 @@ const sidebarOpen = ref(false)
 
 const navItems = [
   { label: 'Dashboard', to: '/admin' },
+  { label: 'Settings', to: '/admin/settings' },
   { label: 'Banners', to: '/admin/banners' },
   { label: 'Pages', to: '/admin/pages' },
   { label: 'Posts', to: '/admin/posts' },

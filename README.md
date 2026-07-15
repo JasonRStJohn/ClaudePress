@@ -54,7 +54,10 @@ The layer handles the two-URL problem that bit us on Argyle:
 ## Phase status
 
 - **Phase 1 (in progress)**: Layer extraction, base migration, core components
-- **Phase 2**: Custom auth, client login, minimal admin panel
+- **Phase 2**: Custom auth, client login, minimal admin panel (settings
+  admin page done — `/admin/settings`; sites needing settings fields beyond
+  the base schema shadow this page into their own `pages/admin/settings/`,
+  same as any other override)
 - **Phase 3**: Production hardening (Caddy, restic backups, monitoring)
 - **Phase 4**: Template CLI + docs
 
