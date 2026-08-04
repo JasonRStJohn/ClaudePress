@@ -14,6 +14,10 @@
  *
  * Storage is stdout on purpose: no migration, no admin page, and no database
  * write on traffic that is overwhelmingly bots.
+ *
+ * The query string is deliberately dropped before logging. `event.path`
+ * includes it, and a 404 URL can carry arbitrary visitor-supplied params
+ * (`?token=`, `?email=`) that have no business sitting in container logs.
  */
 import { getRequestHeader } from 'h3'
 
@@ -34,7 +38,7 @@ export default defineNitroPlugin((nitro) => {
   nitro.hooks.hook('render:response', (response, { event }) => {
     if (response.statusCode !== 404) return
 
-    const path = event.path || ''
+    const path = (event.path || '').split('?')[0]
     if (SKIP.some((re) => re.test(path))) return
 
     console.warn(JSON.stringify({
