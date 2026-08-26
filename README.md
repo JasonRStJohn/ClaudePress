@@ -70,32 +70,39 @@ The forgot/reset flow is **off by default** and gated on a per-site flag,
 `NUXT_PUBLIC_PASSWORD_RESET_ENABLED`. While it's off, the "Forgot password?"
 link is hidden and `/forgot-password` redirects to `/login`, so a site never
 advertises a flow it can't complete. The flag is read at runtime, so flipping it
-is an env change + container recreate — no rebuild.
+is an env change + frontend recreate — no rebuild.
 
-**Forgot-password needs three per-site setup steps** (change-password does not):
+### Enabling forgot-password on a site
 
-0. **Set `NUXT_PUBLIC_PASSWORD_RESET_ENABLED=true`** for the site (its `.env` /
-   compose `environment:`), once the two steps below are done.
+Run the setup script once per site — it does the PocketBase-side wiring for you
+and is safe to re-run:
 
-1. **Configure SMTP** in the site's PocketBase settings
-   (*Settings → Mail settings*), or no reset email is ever sent. Without it,
-   the request silently succeeds and nothing arrives.
-2. **Point the reset email at our page.** PocketBase's default
-   "Password reset" email template links to its own admin UI
-   (`{APP_URL}/_/#/auth/confirm-password-reset/{TOKEN}`). Edit that template
-   (*Settings → Mail settings → Password reset*) so the link target is:
+```bash
+node scripts/setup-password-reset.mjs      # or: npm run setup:password-reset
+```
 
-   ```
-   {APP_URL}/reset-password?token={TOKEN}
-   ```
+It authenticates to the site's PocketBase as a superuser (over `/api`, so it
+works even with the `/_/` admin UI behind Cloudflare Access) and:
 
-   `{APP_URL}` must be the site's **public** URL (the one the browser uses),
-   set in *Settings → Application → Application URL* — not the internal Docker
-   URL. Otherwise the emailed link won't resolve for the recipient.
+1. **Retargets the reset email.** PocketBase's default template links to its own
+   admin UI (`{APP_URL}/_/#/auth/confirm-password-reset/{TOKEN}`). The script
+   rewrites the `users` collection's `resetPasswordTemplate` link to the site's
+   **frontend** page — `https://your-site/reset-password?token={TOKEN}`. It must
+   be the frontend origin, not `{APP_URL}` (PocketBase's own URL): the page is a
+   Nuxt route, and keeping the link off `/_/` is what lets you gate the admin UI
+   with Cloudflare Access without breaking reset.
+2. **Optionally configures SMTP** (host/port/credentials/sender). Without SMTP no
+   reset email is ever sent — the request just silently succeeds.
+3. **Sends a test email** so you can confirm delivery before trusting it.
+4. **Optionally sets `NUXT_PUBLIC_PASSWORD_RESET_ENABLED=true`** in a `.env` you
+   point it at. Redeploy/recreate the **frontend** afterward for the flag to
+   take effect (it lives in the Nuxt runtime, not PocketBase).
 
-As of this writing only whindancer has SMTP configured, so it is the reference
-end-to-end test for the email path; other sites get working change-password
-immediately and working reset once their SMTP is set up.
+**Cloudflare Access note:** if you gate the PocketBase admin, scope the policy to
+`/_/*` only — never the whole host. The reset flow (and the entire public site)
+calls PocketBase under `/api/*`; gating that blackholes everything.
+
+Change-password needs none of this — it works out of the box for any authed user.
 
 ## Phase status
 
