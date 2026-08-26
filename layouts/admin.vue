@@ -29,6 +29,13 @@
 
       <div class="border-t border-slate-200 px-3 py-3 shrink-0">
         <div class="text-xs text-slate-400 px-3 mb-1 truncate">{{ currentUser?.email }}</div>
+        <NuxtLink
+          to="/admin/account"
+          class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900 rounded-md transition-colors"
+          @click="sidebarOpen = false"
+        >
+          Change password
+        </NuxtLink>
         <button
           class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900 rounded-md transition-colors"
           @click="handleLogout"

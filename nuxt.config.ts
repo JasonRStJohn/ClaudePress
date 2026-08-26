@@ -24,6 +24,14 @@ export default defineNuxtConfig({
       pbUrl: process.env.NUXT_PUBLIC_PB_URL || 'http://localhost:8090',
 
       siteName: process.env.NUXT_PUBLIC_SITE_NAME || 'ClaudePress Site',
+
+      // Whether the self-service password-reset flow (forgot / reset pages and
+      // the "Forgot password?" link) is offered. Off by default: the flow only
+      // works once the site has SMTP configured in PocketBase and the reset
+      // email template retargeted (see README). A site opts in at runtime by
+      // setting NUXT_PUBLIC_PASSWORD_RESET_ENABLED=true — boolean here so Nuxt
+      // coerces the env string on override. Change-password is unaffected.
+      passwordResetEnabled: process.env.NUXT_PUBLIC_PASSWORD_RESET_ENABLED === 'true',
     },
   },
 
