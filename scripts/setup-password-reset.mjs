@@ -116,11 +116,17 @@ async function main() {
     ok('Reset email now links to ' + resetLink)
   }
 
-  // 3. Optionally configure SMTP.
+  // 3. Configure SMTP — but only prompt when it isn't already set up.
   const settings = await pb.settings.getAll()
   const smtpOn = settings?.smtp?.enabled
-  log(`\nSMTP is currently ${smtpOn ? '\x1b[32mENABLED\x1b[0m' : '\x1b[33mNOT configured\x1b[0m'}.`)
-  if (await askYesNo('Configure SMTP now?', !smtpOn)) {
+  let configureSmtp = false
+  if (smtpOn) {
+    ok(`SMTP already configured (${settings.smtp.host}) — skipping. The test send below confirms it works.`)
+  } else {
+    log('\n\x1b[33mSMTP is not configured\x1b[0m — no reset email can be sent without it.')
+    configureSmtp = await askYesNo('Configure SMTP now?', true)
+  }
+  if (configureSmtp) {
     const host = await ask('  SMTP host', settings?.smtp?.host || '')
     const port = parseInt(await ask('  SMTP port', String(settings?.smtp?.port || 587)), 10)
     const username = await ask('  SMTP username', settings?.smtp?.username || '')
