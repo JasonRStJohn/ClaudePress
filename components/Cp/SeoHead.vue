@@ -3,6 +3,7 @@ const props = defineProps<{
   title?: string | null
   description?: string | null
   image?: string | null
+  imageAlt?: string | null
   type?: 'website' | 'article'
 }>()
 
@@ -14,11 +15,11 @@ const siteName = settings?.site_name || config.public.siteName
 const siteUrl = ((config.public.siteUrl as string) || '').replace(/\/$/, '')
 
 const fullTitle = computed(() =>
-  props.title ? `${props.title} — ${siteName}` : siteName,
+  composedTitle(resolveShareTitle(props.title, settings), siteName),
 )
 
-const description = computed(
-  () => props.description || settings?.tagline || '',
+const description = computed(() =>
+  resolveShareDescription(props.description, settings),
 )
 
 // Social scrapers fetch from their own servers, so og:image / og:url must be
@@ -42,6 +43,10 @@ const ogImage = computed<string | null>(() => {
 
 const ogUrl = computed<string | null>(() => (siteUrl ? siteUrl + route.path : null))
 
+const imageAlt = computed<string | null>(
+  () => props.imageAlt || settings?.og_image_alt || null,
+)
+
 useSeoMeta({
   title: fullTitle,
   description,
@@ -55,6 +60,11 @@ useSeoMeta({
   twitterTitle: fullTitle,
   twitterDescription: description,
   twitterImage: ogImage,
+  ogImageAlt: () => imageAlt.value || undefined,
+  ogImageWidth: () => (props.image ? undefined : 1200),
+  ogImageHeight: () => (props.image ? undefined : 630),
+  twitterImageAlt: () => imageAlt.value || undefined,
+  twitterSite: () => settings?.twitter_site || undefined,
 })
 </script>
 
