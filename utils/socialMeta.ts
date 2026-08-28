@@ -45,3 +45,15 @@ export function descriptionBand(length: number): Band {
 export function altBand(alt: string): Band {
   return alt.trim().length > 0 ? 'green' : 'amber'
 }
+
+// og:image:width/height may only be declared for the bundled site card
+// (the only image whose dimensions we know: 1200x630). A per-page image or a
+// client-uploaded settings.og_image has unknown size, and an unresolved image
+// must emit no dimensions at all.
+export function shouldEmitCardDimensions(
+  hasPropImage: boolean,
+  hasSettingsOgImage: boolean,
+  hasResolvedImage: boolean,
+): boolean {
+  return !hasPropImage && !hasSettingsOgImage && hasResolvedImage
+}

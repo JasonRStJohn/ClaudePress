@@ -41,6 +41,14 @@ const ogImage = computed<string | null>(() => {
   return absolute('/og.png')
 })
 
+const emitCardDimensions = computed(() =>
+  shouldEmitCardDimensions(
+    !!props.image,
+    !!(settings && useFile(settings, 'og_image')),
+    !!ogImage.value,
+  ),
+)
+
 const ogUrl = computed<string | null>(() => (siteUrl ? siteUrl + route.path : null))
 
 const imageAlt = computed<string | null>(
@@ -61,8 +69,8 @@ useSeoMeta({
   twitterDescription: description,
   twitterImage: ogImage,
   ogImageAlt: () => imageAlt.value || undefined,
-  ogImageWidth: () => (props.image ? undefined : 1200),
-  ogImageHeight: () => (props.image ? undefined : 630),
+  ogImageWidth: () => (emitCardDimensions.value ? 1200 : undefined),
+  ogImageHeight: () => (emitCardDimensions.value ? 630 : undefined),
   twitterImageAlt: () => imageAlt.value || undefined,
   twitterSite: () => settings?.twitter_site || undefined,
 })

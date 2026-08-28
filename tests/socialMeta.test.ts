@@ -6,6 +6,7 @@ import {
   titleBand,
   descriptionBand,
   altBand,
+  shouldEmitCardDimensions,
 } from '../utils/socialMeta'
 
 describe('composedTitle', () => {
@@ -65,5 +66,20 @@ describe('altBand', () => {
     expect(altBand('A dog at a show')).toBe('green')
     expect(altBand('   ')).toBe('amber')
     expect(altBand('')).toBe('amber')
+  })
+})
+
+describe('shouldEmitCardDimensions', () => {
+  it('true only for the bundled card: no prop image, no settings upload, image resolved', () => {
+    expect(shouldEmitCardDimensions(false, false, true)).toBe(true)
+  })
+  it('false when a per-page image prop is present', () => {
+    expect(shouldEmitCardDimensions(true, false, true)).toBe(false)
+  })
+  it('false when a client settings.og_image upload is present (unknown size)', () => {
+    expect(shouldEmitCardDimensions(false, true, true)).toBe(false)
+  })
+  it('false when no image resolved (orphan-tag guard)', () => {
+    expect(shouldEmitCardDimensions(false, false, false)).toBe(false)
   })
 })
