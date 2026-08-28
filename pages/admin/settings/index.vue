@@ -75,28 +75,6 @@
             class="w-full text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-sm file:font-medium file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
           />
         </div>
-        <div>
-          <img
-            v-if="currentOgImageUrl"
-            :src="currentOgImageUrl"
-            alt="Current social share image"
-            class="h-24 w-auto rounded-md border border-slate-200 mb-2 object-contain bg-white"
-          />
-          <label class="block text-sm font-medium text-slate-700 mb-1" for="og_image">
-            {{ currentOgImageUrl ? 'Replace social share image (optional)' : 'Upload social share image' }}
-          </label>
-          <p class="text-xs text-slate-500 mb-1">
-            The preview card shown when the site is linked in Slack, iMessage, Facebook, etc. Use a 1200×630 PNG or JPG.
-          </p>
-          <input
-            id="og_image"
-            ref="ogImageInput"
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            :disabled="saving"
-            class="w-full text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-sm file:font-medium file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
-          />
-        </div>
       </div>
 
       <!-- Contact -->
@@ -168,9 +146,25 @@
         <h2 class="text-sm font-semibold text-slate-900 uppercase tracking-wide">Social sharing</h2>
         <p class="text-xs text-slate-500">
           Controls the title, description, and card shown when your site is
-          linked in Google, Slack, Facebook, iMessage, and X. Upload the card
-          image under Branding above.
+          linked in Google, Slack, Facebook, iMessage, and X.
         </p>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1" for="og_image">
+            {{ (stagedOgImageUrl || currentOgImageUrl) ? 'Replace share image (optional)' : 'Upload share image' }}
+          </label>
+          <p class="text-xs text-slate-500 mb-1">
+            The image shown on the card when your site is linked. Use a 1200×630 PNG or JPG.
+          </p>
+          <input
+            id="og_image"
+            ref="ogImageInput"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            :disabled="saving"
+            class="w-full text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-sm file:font-medium file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
+            @change="onOgImageChange"
+          />
+        </div>
         <CpMetaField v-model="form.social_title" kind="title" label="Default share title" :site-name="form.site_name" :disabled="saving" />
         <CpMetaField v-model="form.social_description" kind="description" label="Default share description" :disabled="saving" />
         <CpMetaField v-model="form.og_image_alt" kind="alt" label="Share image alt text" :disabled="saving" />
@@ -191,7 +185,7 @@
           <p class="text-xs font-medium text-slate-500 mb-1">Preview</p>
           <div class="max-w-md border border-slate-200 rounded-md overflow-hidden">
             <div class="aspect-[1200/630] bg-slate-100">
-              <img v-if="currentOgImageUrl" :src="currentOgImageUrl" alt="Share preview" class="h-full w-full object-cover" />
+              <img v-if="stagedOgImageUrl || currentOgImageUrl" :src="stagedOgImageUrl || currentOgImageUrl" alt="Share preview" class="h-full w-full object-cover" />
               <div v-else class="h-full w-full flex items-center justify-center text-xs text-slate-400">No share image uploaded</div>
             </div>
             <div class="p-3 bg-white">
@@ -286,6 +280,25 @@ const currentOgImageUrl = computed(() => {
 
 const previewTitle = computed(() => composedTitle(form.social_title, form.site_name))
 
+// Live-preview a just-picked share image before it is saved, via a local
+// object URL. Revoked when replaced, on save, or on unmount to avoid leaks.
+const stagedOgImageUrl = ref<string | null>(null)
+
+const clearStagedOgImage = () => {
+  if (stagedOgImageUrl.value) {
+    URL.revokeObjectURL(stagedOgImageUrl.value)
+    stagedOgImageUrl.value = null
+  }
+}
+
+const onOgImageChange = () => {
+  clearStagedOgImage()
+  const file = ogImageInput.value?.files?.[0]
+  if (file) stagedOgImageUrl.value = URL.createObjectURL(file)
+}
+
+onBeforeUnmount(clearStagedOgImage)
+
 onMounted(async () => {
   const list = await pb.collection('settings').getList(1, 1).catch((e: any) => {
     loadError.value = e?.message || 'Settings not found.'
@@ -363,6 +376,7 @@ const handleSubmit = async () => {
     if (logoInput.value) logoInput.value.value = ''
     if (faviconInput.value) faviconInput.value.value = ''
     if (ogImageInput.value) ogImageInput.value.value = ''
+    clearStagedOgImage()
 
     saveSuccess.value = true
     setTimeout(() => { saveSuccess.value = false }, 3000)
