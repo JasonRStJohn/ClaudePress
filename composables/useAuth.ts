@@ -72,11 +72,63 @@ export const useAuth = () => {
     modelCookie.value = null
   }
 
+  /**
+   * Change the current user's password.
+   *
+   * PocketBase requires the old password to authorise a self-service change,
+   * and it invalidates every existing auth token the moment the password
+   * changes. So we re-authenticate with the new password right after and
+   * refresh our state/cookies, leaving the user signed in rather than kicked
+   * back to /login.
+   */
+  const changePassword = async (
+    oldPassword: string,
+    newPassword: string,
+  ): Promise<void> => {
+    const user = currentUser.value
+    if (!user) throw new Error('Not signed in.')
+
+    await pb.collection('users').update(user.id, {
+      oldPassword,
+      password: newPassword,
+      passwordConfirm: newPassword,
+    })
+
+    // The update above invalidated our token; log back in for a fresh one.
+    await login(user.email as string, newPassword)
+  }
+
+  /**
+   * Send a password-reset email to `email`, if an account exists.
+   *
+   * Delivery depends on the consuming site having SMTP configured in its
+   * PocketBase mail settings (see README). Callers should show the same
+   * confirmation regardless of outcome so this can't be used to probe which
+   * emails have accounts.
+   */
+  const requestPasswordReset = async (email: string): Promise<void> => {
+    await pb.collection('users').requestPasswordReset(email)
+  }
+
+  /**
+   * Complete a password reset using the token from the emailed link.
+   * Used by /reset-password, which reads the token from the query string.
+   */
+  const confirmPasswordReset = async (
+    token: string,
+    newPassword: string,
+  ): Promise<void> => {
+    await pb.collection('users').confirmPasswordReset(token, newPassword, newPassword)
+  }
+
   return {
     pb,
     currentUser,
     isAuthenticated,
     login,
     logout,
+    changePassword,
+    requestPasswordReset,
+    confirmPasswordReset,
   }
 }

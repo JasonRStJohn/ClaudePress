@@ -17,7 +17,8 @@
   "scripts": {
     "dev": "nuxi dev",
     "build": "nuxi build",
-    "preview": "nuxi preview"
+    "preview": "nuxi preview",
+    "setup:password-reset": "node scripts/setup-password-reset.mjs"
   },
   "dependencies": {
     "@nuxt/image": "^1.7.0",
