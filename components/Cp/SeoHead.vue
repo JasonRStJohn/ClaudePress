@@ -14,6 +14,13 @@ const config = useRuntimeConfig()
 const siteName = settings?.site_name || config.public.siteName
 const siteUrl = ((config.public.siteUrl as string) || '').replace(/\/$/, '')
 
+// Resolve the settings share-image URL synchronously here in setup. useFile()
+// calls usePbPublicUrl() internally, and a composable invoked lazily inside a
+// render-time computed getter (i.e. after this component's `await`) throws
+// "[nuxt] instance unavailable" during SSR. Calling it in setup — like useRoute
+// above — is safe; the computeds below then use this plain string.
+const settingsOgImageUrl = settings ? useFile(settings, 'og_image') : null
+
 const fullTitle = computed(() =>
   composedTitle(resolveShareTitle(props.title, settings), siteName),
 )
@@ -36,15 +43,14 @@ const absolute = (u: string | null | undefined): string | null => {
 // bundled /og.png -> none.
 const ogImage = computed<string | null>(() => {
   if (props.image) return absolute(props.image)
-  const fromSettings = settings ? useFile(settings, 'og_image') : null
-  if (fromSettings) return fromSettings
+  if (settingsOgImageUrl) return settingsOgImageUrl
   return absolute('/og.png')
 })
 
 const emitCardDimensions = computed(() =>
   shouldEmitCardDimensions(
     !!props.image,
-    !!(settings && useFile(settings, 'og_image')),
+    !!settingsOgImageUrl,
     !!ogImage.value,
   ),
 )
