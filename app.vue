@@ -1,4 +1,9 @@
 <template>
+  <!-- Site-wide SEO/social baseline: every route gets og:title, og:description,
+       og:url, og:image (from settings.og_image or the site's /og.png) and the
+       twitter card, derived from the settings singleton. A page that renders
+       its own <CpSeoHead> with props overrides these per-key. -->
+  <CpSeoHead />
   <NuxtLayout>
     <NuxtPage />
   </NuxtLayout>

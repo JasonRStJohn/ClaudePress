@@ -32,7 +32,7 @@ Sites override by shadowing files.
 `backend/pb_migrations/0001_base.js` creates the standard collections every
 small site needs:
 
-- `settings` — singleton: site name, tagline, logo, socials, contact info
+- `settings` — singleton: site name, tagline, logo, favicon, `og_image`, socials, contact info
 - `navigation` — hierarchical nav items (parent/child, label, href, order)
 - `pages` — slug, title, body (rich text), SEO fields, published flag
 - `posts` — blog posts with category relation, cover image, excerpt
@@ -50,6 +50,28 @@ The layer handles the two-URL problem that bit us on Argyle:
 - `runtimeConfig.public.pbUrl` — client-side (e.g. `https://cms.example.com`)
 
 `composables/usePb.ts` picks the right one based on `import.meta.server`.
+
+## SEO & social share cards
+
+`components/Cp/SeoHead.vue` emits the `<title>`, description, Open Graph and
+Twitter-card tags. `app.vue` renders it once with no props so **every route**
+gets a baseline card from the `settings` singleton (site name, tagline, share
+image); a page that renders its own `<CpSeoHead :title :description :image>`
+overrides per-key.
+
+The share image (`og:image` / `twitter:image`) resolves in order:
+
+1. an explicit `:image` prop on `<CpSeoHead>`
+2. `settings.og_image` — uploaded in the admin (Settings → Branding), no deploy
+3. `/og.png` in the consuming site's `public/` — the committed default
+4. nothing
+
+Social scrapers fetch from their own servers, so `og:image` and `og:url` must be
+absolute. Each site sets **`NUXT_PUBLIC_SITE_URL`** (scheme + host, no trailing
+slash) via compose + `.env`, same pattern as `NUXT_PUBLIC_PB_URL`. If it's
+unset, only an already-absolute image (a PocketBase file URL) is emitted and
+`og:url` is skipped — so a site with no `SITE_URL` and only a bundled `/og.png`
+gets a text-only card, not a broken image.
 
 ## Account & password management
 

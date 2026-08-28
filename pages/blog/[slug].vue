@@ -5,6 +5,7 @@
         :title="post.seo_title || post.title"
         :description="post.seo_description || post.excerpt"
         :image="coverUrl || undefined"
+        :image-alt="post.title"
         type="article"
       />
 

@@ -3,24 +3,82 @@ const props = defineProps<{
   title?: string | null
   description?: string | null
   image?: string | null
+  imageAlt?: string | null
   type?: 'website' | 'article'
 }>()
 
 const settings = await useSettings()
-const siteName = settings?.site_name || useRuntimeConfig().public.siteName
+const route = useRoute()
+const config = useRuntimeConfig()
+
+const siteName = settings?.site_name || config.public.siteName
+const siteUrl = ((config.public.siteUrl as string) || '').replace(/\/$/, '')
+
+// Resolve the settings share-image URL synchronously here in setup. useFile()
+// calls usePbPublicUrl() internally, and a composable invoked lazily inside a
+// render-time computed getter (i.e. after this component's `await`) throws
+// "[nuxt] instance unavailable" during SSR. Calling it in setup — like useRoute
+// above — is safe; the computeds below then use this plain string.
+const settingsOgImageUrl = settings ? useFile(settings, 'og_image') : null
 
 const fullTitle = computed(() =>
-  props.title ? `${props.title} — ${siteName}` : siteName
+  composedTitle(resolveShareTitle(props.title, settings), siteName),
+)
+
+const description = computed(() =>
+  resolveShareDescription(props.description, settings),
+)
+
+// Social scrapers fetch from their own servers, so og:image / og:url must be
+// absolute. Pass through anything already absolute; prefix the rest with
+// siteUrl; give up (null) if siteUrl isn't configured.
+const absolute = (u: string | null | undefined): string | null => {
+  if (!u) return null
+  if (/^https?:\/\//.test(u)) return u
+  if (!siteUrl) return null
+  return siteUrl + (u.startsWith('/') ? u : `/${u}`)
+}
+
+// Share image: explicit prop -> the settings.og_image upload -> the site's
+// bundled /og.png -> none.
+const ogImage = computed<string | null>(() => {
+  if (props.image) return absolute(props.image)
+  if (settingsOgImageUrl) return settingsOgImageUrl
+  return absolute('/og.png')
+})
+
+const emitCardDimensions = computed(() =>
+  shouldEmitCardDimensions(
+    !!props.image,
+    !!settingsOgImageUrl,
+    !!ogImage.value,
+  ),
+)
+
+const ogUrl = computed<string | null>(() => (siteUrl ? siteUrl + route.path : null))
+
+const imageAlt = computed<string | null>(
+  () => props.imageAlt || settings?.og_image_alt || null,
 )
 
 useSeoMeta({
   title: fullTitle,
-  description: props.description || settings?.tagline || '',
+  description,
   ogTitle: fullTitle,
-  ogDescription: props.description || settings?.tagline || '',
-  ogImage: props.image || null,
+  ogDescription: description,
+  ogImage,
+  ogUrl,
   ogType: props.type || 'website',
+  ogSiteName: siteName,
   twitterCard: 'summary_large_image',
+  twitterTitle: fullTitle,
+  twitterDescription: description,
+  twitterImage: ogImage,
+  ogImageAlt: () => imageAlt.value || undefined,
+  ogImageWidth: () => (emitCardDimensions.value ? 1200 : undefined),
+  ogImageHeight: () => (emitCardDimensions.value ? 630 : undefined),
+  twitterImageAlt: () => imageAlt.value || undefined,
+  twitterSite: () => settings?.twitter_site || undefined,
 })
 </script>
 

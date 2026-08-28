@@ -25,6 +25,14 @@ export default defineNuxtConfig({
 
       siteName: process.env.NUXT_PUBLIC_SITE_NAME || 'ClaudePress Site',
 
+      // Canonical public origin (scheme + host, no trailing slash), e.g.
+      // https://example.com. Consuming sites set NUXT_PUBLIC_SITE_URL. Used to
+      // make og:image / og:url absolute — social scrapers fetch from their own
+      // servers, so relative URLs don't resolve. Empty → CpSeoHead emits
+      // og:image only when it's already absolute (a PocketBase file URL) and
+      // skips og:url.
+      siteUrl: process.env.NUXT_PUBLIC_SITE_URL || '',
+
       // Whether the self-service password-reset flow (forgot / reset pages and
       // the "Forgot password?" link) is offered. Off by default: the flow only
       // works once the site has SMTP configured in PocketBase and the reset
