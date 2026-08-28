@@ -47,6 +47,10 @@ the client types, using the entered title/description/image.
 
 Additive migration on the `settings` collection, all fields **optional**:
 
+- `social_title` (text) — the default page/share title, composed with
+  `site_name` as `"{social_title} — {site_name}"` (the title field the editor
+  validates); empty means "no default", and a route falls back to just
+  `site_name` unless it passes its own title prop.
 - `social_description` (text) — the default share/meta description
 - `og_image_alt` (text) — alt text for the site-wide card image
 - `twitter_site` (text) — `@handle`
@@ -59,6 +63,9 @@ its new alt. No new fields on `posts` — `cover` (file) and `seo_title` /
 
 `components/Cp/SeoHead.vue` changes:
 
+- **Title precedence** becomes `props.title || settings.social_title || (none)`,
+  still composed as `"{title} — {site_name}"` when a title resolves. A per-page
+  prop still wins, so nothing overrides pages that set their own title.
 - **Description precedence** becomes `props.description || settings.social_description || settings.tagline`.
   The editor now controls the site default; `tagline` remains the graceful
   fallback (so existing sites are unchanged until they set `social_description`).
@@ -106,9 +113,10 @@ run locally.
 
 ### infinity seed
 
-A small **infinity-side** migration seeds `settings.social_description` with the
-125-char string currently hardcoded in `infinity/pages/index.vue`, and that
-explicit `description=` prop is removed — so the client owns the copy going
+A small **infinity-side** migration seeds `settings.social_title` with
+"Preservation breeder sites" and `settings.social_description` with the 125-char
+string currently hardcoded in `infinity/pages/index.vue`, and both explicit
+`title=` / `description=` props are removed — so the client owns the copy going
 forward and the homepage flows through the same path as every other site.
 
 ## Non-goals (YAGNI)
