@@ -75,6 +75,28 @@
             class="w-full text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-sm file:font-medium file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
           />
         </div>
+        <div>
+          <img
+            v-if="currentOgImageUrl"
+            :src="currentOgImageUrl"
+            alt="Current social share image"
+            class="h-24 w-auto rounded-md border border-slate-200 mb-2 object-contain bg-white"
+          />
+          <label class="block text-sm font-medium text-slate-700 mb-1" for="og_image">
+            {{ currentOgImageUrl ? 'Replace social share image (optional)' : 'Upload social share image' }}
+          </label>
+          <p class="text-xs text-slate-500 mb-1">
+            The preview card shown when the site is linked in Slack, iMessage, Facebook, etc. Use a 1200×630 PNG or JPG.
+          </p>
+          <input
+            id="og_image"
+            ref="ogImageInput"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            :disabled="saving"
+            class="w-full text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-sm file:font-medium file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
+          />
+        </div>
       </div>
 
       <!-- Contact -->
@@ -187,9 +209,11 @@ const recordId = ref('')
 const currentCollectionId = ref('')
 const currentLogoFile = ref<string | null>(null)
 const currentFaviconFile = ref<string | null>(null)
+const currentOgImageFile = ref<string | null>(null)
 
 const logoInput = ref<HTMLInputElement | null>(null)
 const faviconInput = ref<HTMLInputElement | null>(null)
+const ogImageInput = ref<HTMLInputElement | null>(null)
 
 const form = reactive({
   site_name: '',
@@ -210,6 +234,11 @@ const currentLogoUrl = computed(() => {
 const currentFaviconUrl = computed(() => {
   if (!currentFaviconFile.value || !currentCollectionId.value) return null
   return `${pbPublicUrl}/api/files/${currentCollectionId.value}/${recordId.value}/${currentFaviconFile.value}`
+})
+
+const currentOgImageUrl = computed(() => {
+  if (!currentOgImageFile.value || !currentCollectionId.value) return null
+  return `${pbPublicUrl}/api/files/${currentCollectionId.value}/${recordId.value}/${currentOgImageFile.value}`
 })
 
 onMounted(async () => {
@@ -240,6 +269,8 @@ onMounted(async () => {
   currentLogoFile.value = Array.isArray(logo) ? (logo[0] ?? null) : (logo ?? null)
   const favicon = record.favicon
   currentFaviconFile.value = Array.isArray(favicon) ? (favicon[0] ?? null) : (favicon ?? null)
+  const ogImage = record.og_image
+  currentOgImageFile.value = Array.isArray(ogImage) ? (ogImage[0] ?? null) : (ogImage ?? null)
 
   loaded.value = true
 })
@@ -265,6 +296,8 @@ const handleSubmit = async () => {
     if (logo) data.append('logo', logo)
     const favicon = faviconInput.value?.files?.[0]
     if (favicon) data.append('favicon', favicon)
+    const ogImage = ogImageInput.value?.files?.[0]
+    if (ogImage) data.append('og_image', ogImage)
 
     const updated = await pb.collection('settings').update(recordId.value, data)
 
@@ -272,8 +305,11 @@ const handleSubmit = async () => {
     currentLogoFile.value = Array.isArray(updatedLogo) ? (updatedLogo[0] ?? null) : (updatedLogo ?? null)
     const updatedFavicon = updated.favicon
     currentFaviconFile.value = Array.isArray(updatedFavicon) ? (updatedFavicon[0] ?? null) : (updatedFavicon ?? null)
+    const updatedOgImage = updated.og_image
+    currentOgImageFile.value = Array.isArray(updatedOgImage) ? (updatedOgImage[0] ?? null) : (updatedOgImage ?? null)
     if (logoInput.value) logoInput.value.value = ''
     if (faviconInput.value) faviconInput.value.value = ''
+    if (ogImageInput.value) ogImageInput.value.value = ''
 
     saveSuccess.value = true
     setTimeout(() => { saveSuccess.value = false }, 3000)
