@@ -66,6 +66,9 @@ describe('resolveToolbar', () => {
       const { extensions } = resolveToolbar({})
       expect([...extensions].sort()).toEqual(['bold', 'italic', 'link'])
     })
+    it('removing link drops the link extension (not exposed ⇒ not injectable)', () => {
+      expect(resolveToolbar({ remove: ['link'] }).extensions.has('link')).toBe(false)
+    })
   })
 })
 

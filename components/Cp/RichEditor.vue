@@ -45,7 +45,7 @@ import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
 import TextAlign from '@tiptap/extension-text-align'
 import {
-  resolveToolbar, starterKitDisabledConfig, FULL_FEATURES,
+  resolveToolbar, starterKitDisabledConfig,
   type ToolbarFeature, type ControlId,
 } from '../../utils/richEditorToolbar'
 
@@ -117,7 +117,9 @@ const editor = useEditor({
 
   extensions: [
     StarterKit.configure(starterKitDisabledConfig(resolved.extensions)),
-    Link.configure({ openOnClick: false }), // base, always present
+    ...(resolved.extensions.has('link')
+      ? [Link.configure({ openOnClick: false })]
+      : []),
     ...(resolved.extensions.has('image')
       ? [Image.configure({ HTMLAttributes: { class: 'rounded-md max-w-full h-auto' } })]
       : []),
