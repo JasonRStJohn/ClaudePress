@@ -6,25 +6,14 @@
       <button type="button" :class="tb()" title="Undo" @click="editor?.chain().focus().undo().run()">↩</button>
       <button type="button" :class="tb()" title="Redo" @click="editor?.chain().focus().redo().run()">↪</button>
       <span class="w-px h-4 bg-slate-200 mx-1 inline-block" />
-      <button type="button" :class="tb(editor?.isActive('bold'))" @click="editor?.chain().focus().toggleBold().run()"><strong>B</strong></button>
-      <button type="button" :class="tb(editor?.isActive('italic'))" @click="editor?.chain().focus().toggleItalic().run()"><em>I</em></button>
-      <button type="button" :class="tb(editor?.isActive('underline'))" @click="editor?.chain().focus().toggleUnderline().run()"><u>U</u></button>
-      <button type="button" :class="tb(editor?.isActive('strike'))" @click="editor?.chain().focus().toggleStrike().run()"><s>S</s></button>
-      <button type="button" :class="tb(editor?.isActive('code'))" title="Inline code" @click="editor?.chain().focus().toggleCode().run()">&#96;c&#96;</button>
+      <button
+        v-for="id in resolved.controls" :key="id"
+        type="button" :class="tb(editor ? CONTROL_VIEWS[id].isActive(editor) : false)"
+        :title="CONTROL_VIEWS[id].title"
+        @click="editor && CONTROL_VIEWS[id].run(editor)"
+        v-html="CONTROL_VIEWS[id].label"
+      />
       <span class="w-px h-4 bg-slate-200 mx-1 inline-block" />
-      <button type="button" :class="tb(editor?.isActive('heading', { level: 1 }))" @click="editor?.chain().focus().toggleHeading({ level: 1 }).run()">H1</button>
-      <button type="button" :class="tb(editor?.isActive('heading', { level: 2 }))" @click="editor?.chain().focus().toggleHeading({ level: 2 }).run()">H2</button>
-      <button type="button" :class="tb(editor?.isActive('heading', { level: 3 }))" @click="editor?.chain().focus().toggleHeading({ level: 3 }).run()">H3</button>
-      <span class="w-px h-4 bg-slate-200 mx-1 inline-block" />
-      <button type="button" :class="tb(editor?.isActive('bulletList'))" title="Bullet list" @click="editor?.chain().focus().toggleBulletList().run()">• list</button>
-      <button type="button" :class="tb(editor?.isActive('orderedList'))" title="Numbered list" @click="editor?.chain().focus().toggleOrderedList().run()">1. list</button>
-      <span class="w-px h-4 bg-slate-200 mx-1 inline-block" />
-      <button type="button" :class="tb(editor?.isActive('blockquote'))" @click="editor?.chain().focus().toggleBlockquote().run()">❝</button>
-      <button type="button" :class="tb(editor?.isActive('codeBlock'))" title="Code block" @click="editor?.chain().focus().toggleCodeBlock().run()">{ }</button>
-      <button type="button" :class="tb()" title="Horizontal rule" @click="editor?.chain().focus().setHorizontalRule().run()">―</button>
-      <span class="w-px h-4 bg-slate-200 mx-1 inline-block" />
-      <button type="button" :class="tb(editor?.isActive('link'))" title="Link" @click="handleLink">link</button>
-      <button type="button" :class="tb()" title="Insert image" @click="imageInput?.click()">img</button>
       <button type="button" :class="tb()" title="Clear formatting" @click="editor?.chain().focus().clearNodes().unsetAllMarks().run()">✕ fmt</button>
     </div>
 
@@ -54,11 +43,28 @@ import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
 import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
+import TextAlign from '@tiptap/extension-text-align'
+import {
+  resolveToolbar, starterKitDisabledConfig,
+  type ToolbarFeature, type ControlId,
+} from '../../utils/richEditorToolbar'
 
 const props = defineProps<{
   modelValue: string
   placeholder?: string
+  features?: ToolbarFeature[] | 'full'
+  remove?: ControlId[]
 }>()
+
+if (import.meta.dev && props.features === 'full') {
+  console.warn(
+    '[ClaudePress] <CpRichEditor features="full"> is deprecated. Replace with an ' +
+    'explicit layer array right-sized to this field. See ' +
+    'docs/superpowers/specs/2026-09-15-richeditor-toolbar-layers-design.md',
+  )
+}
+
+const resolved = resolveToolbar({ features: props.features, remove: props.remove })
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
@@ -110,14 +116,18 @@ const editor = useEditor({
   shouldRerenderOnTransaction: true,
 
   extensions: [
-    StarterKit.configure({
-      // StarterKit v3 includes Link; disable it so we can configure it below.
-      link: false,
-    }),
-    Link.configure({ openOnClick: false }),
-    Image.configure({
-      HTMLAttributes: { class: 'rounded-md max-w-full h-auto' },
-    }),
+    StarterKit.configure(starterKitDisabledConfig(resolved.extensions)),
+    ...(resolved.extensions.has('link')
+      ? [Link.configure({ openOnClick: false })]
+      : []),
+    ...(resolved.extensions.has('image')
+      ? [Image.configure({ HTMLAttributes: { class: 'rounded-md max-w-full h-auto' } })]
+      : []),
+    ...(resolved.extensions.has('textAlign')
+      ? [TextAlign.configure({
+          types: resolved.extensions.has('heading') ? ['heading', 'paragraph'] : ['paragraph'],
+        })]
+      : []),
     Placeholder.configure({ placeholder: props.placeholder ?? 'Start writing…' }),
   ],
 
@@ -128,6 +138,7 @@ const editor = useEditor({
 
     // Intercept file drops before the browser can navigate to the image.
     handleDrop(view, event, _slice, moved) {
+      if (!resolved.extensions.has('image')) return false // image control not enabled; drop the image
       if (moved) return false // already-in-editor node being moved, let Tiptap handle it
       const files = Array.from(event.dataTransfer?.files ?? []).filter(f =>
         f.type.startsWith('image/'),
@@ -140,6 +151,7 @@ const editor = useEditor({
 
     // Intercept image pastes (e.g. screenshot from clipboard).
     handlePaste(_view, event) {
+      if (!resolved.extensions.has('image')) return false // image control not enabled; drop the image
       const files = Array.from(event.clipboardData?.files ?? []).filter(f =>
         f.type.startsWith('image/'),
       )
@@ -190,6 +202,30 @@ const handleLink = () => {
   }
 }
 
+// Control -> render mapping driving the toolbar `v-for`. Undo/redo and
+// clear-formatting are fixed buttons outside this map (see template).
+type ControlView = { title: string; label: string; isActive: (e: any) => boolean; run: (e: any) => void }
+const CONTROL_VIEWS: Record<ControlId, ControlView> = {
+  bold:           { title: 'Bold', label: '<strong>B</strong>', isActive: e => e.isActive('bold'), run: e => e.chain().focus().toggleBold().run() },
+  italic:         { title: 'Italic', label: '<em>I</em>', isActive: e => e.isActive('italic'), run: e => e.chain().focus().toggleItalic().run() },
+  underline:      { title: 'Underline', label: '<u>U</u>', isActive: e => e.isActive('underline'), run: e => e.chain().focus().toggleUnderline().run() },
+  strike:         { title: 'Strikethrough', label: '<s>S</s>', isActive: e => e.isActive('strike'), run: e => e.chain().focus().toggleStrike().run() },
+  link:           { title: 'Link', label: 'link', isActive: e => e.isActive('link'), run: () => handleLink() },
+  h1:             { title: 'Heading 1', label: 'H1', isActive: e => e.isActive('heading', { level: 1 }), run: e => e.chain().focus().toggleHeading({ level: 1 }).run() },
+  h2:             { title: 'Heading 2', label: 'H2', isActive: e => e.isActive('heading', { level: 2 }), run: e => e.chain().focus().toggleHeading({ level: 2 }).run() },
+  h3:             { title: 'Heading 3', label: 'H3', isActive: e => e.isActive('heading', { level: 3 }), run: e => e.chain().focus().toggleHeading({ level: 3 }).run() },
+  bulletList:     { title: 'Bullet list', label: '• list', isActive: e => e.isActive('bulletList'), run: e => e.chain().focus().toggleBulletList().run() },
+  orderedList:    { title: 'Numbered list', label: '1. list', isActive: e => e.isActive('orderedList'), run: e => e.chain().focus().toggleOrderedList().run() },
+  blockquote:     { title: 'Quote', label: '❝', isActive: e => e.isActive('blockquote'), run: e => e.chain().focus().toggleBlockquote().run() },
+  horizontalRule: { title: 'Horizontal rule', label: '―', isActive: () => false, run: e => e.chain().focus().setHorizontalRule().run() },
+  alignLeft:      { title: 'Align left', label: '⇤', isActive: e => e.isActive({ textAlign: 'left' }), run: e => e.chain().focus().setTextAlign('left').run() },
+  alignCenter:    { title: 'Align center', label: '↔', isActive: e => e.isActive({ textAlign: 'center' }), run: e => e.chain().focus().setTextAlign('center').run() },
+  alignRight:     { title: 'Align right', label: '⇥', isActive: e => e.isActive({ textAlign: 'right' }), run: e => e.chain().focus().setTextAlign('right').run() },
+  code:           { title: 'Inline code', label: '&#96;c&#96;', isActive: e => e.isActive('code'), run: e => e.chain().focus().toggleCode().run() },
+  codeBlock:      { title: 'Code block', label: '{ }', isActive: e => e.isActive('codeBlock'), run: e => e.chain().focus().toggleCodeBlock().run() },
+  image:          { title: 'Insert image', label: 'img', isActive: () => false, run: () => imageInput.value?.click() },
+}
+
 const tb = (active?: boolean) =>
   `px-2 py-1 text-xs rounded transition-colors select-none ${
     active
@@ -205,5 +241,10 @@ const tb = (active?: boolean) =>
   color: #94a3b8;
   pointer-events: none;
   height: 0;
+}
+
+.tiptap a {
+  color: #2563eb;          /* blue-600 — links are visibly links while editing */
+  text-decoration: underline;
 }
 </style>
