@@ -23,4 +23,9 @@ const clean = computed(() => sanitize(props.html))
 .cp-safe-html :where(ul) { list-style: disc; padding-inline-start: 1.25em; }
 .cp-safe-html :where(ol) { list-style: decimal; padding-inline-start: 1.25em; }
 .cp-safe-html :where(a) { color: #2563eb; text-decoration: underline; }
+/* An empty paragraph is how the editor stores an author's blank line (double
+   Enter); by default it collapses to zero height and the blank line vanishes.
+   Give it one line so it renders as the blank line shown in the editor —
+   WYSIWYG parity for authored spacing. */
+.cp-safe-html :where(p:empty) { min-height: 1lh; }
 </style>
