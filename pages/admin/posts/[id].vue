@@ -55,7 +55,7 @@
                 <label class="block text-sm font-medium text-slate-700 mb-1"
                     >Body</label
                 >
-                <CpRichEditor v-model="form.body" placeholder="Post content…" :features="['decoration','blocks','layout','image']" />
+                <CpRichEditor v-model="form.body" placeholder="Post content…" :features="['decoration','blocks','layout','image']" :remove="['strike']" />
             </div>
 
             <div>
