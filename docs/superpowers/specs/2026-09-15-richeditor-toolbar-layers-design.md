@@ -20,13 +20,31 @@ inline code from one site's editor, and to add text justification. That is reall
 a request for **granular, per-use control of the editor**, consistent with the
 ClaudePress "minimal footgun" philosophy.
 
-Two items in #98 are **out of scope** for this design — they are styling/output
-fixes, not toolbar architecture, and are tracked separately:
+#98 also has two render-side items, folded into this work (they are the same
+"text boxes don't function properly" complaint, and belong with the editor fix):
 
-- Paragraph spacing not rendering on the published site (rendered prose CSS /
-  saved-markup issue).
-- Links not visually distinct in the editor and on the site (editor + rendered
-  prose CSS). Overlaps Be Studios #107.
+- **Paragraph / line-break spacing not rendering on the published site.**
+- **Links not visually distinct** — in the editor and on the site (overlaps #107).
+
+### Render-side root cause (confirmed 2026-09-15)
+
+ClaudePress has two render components: `CpRichText` (wraps content in Tailwind
+`prose` + brand overrides → `<p>` margins and `prose-a:text-brand-600` link color)
+and `CpSafeHtml` (bare `<div v-html>`, **no governing CSS**). Be Studios renders
+`intro_body`, `pillar.body`, `post.body`, and `founder_bio` through **`CpSafeHtml`**
+by design — it wants its own type (`font-abel`, `text-navy`), not the branded
+`prose` theme. The `<p>` tags survive `sanitize-html` (they are allow-listed); they
+simply have **no margins**, so authored blank lines/paragraph spacing collapse. The
+same absence of CSS is why links render plain there.
+
+**Fix direction:** give `CpSafeHtml` a low-specificity baseline "flow" — margins
+between block elements (`p`, `ul`, `ol`, `blockquote`, `pre`) and `<a>` styling —
+authored with `:where()` so a consumer's own classes (BeStudios' `font-abel`,
+`text-navy`, custom link color) still win. NOT a switch to `CpRichText`, which would
+re-impose the brand fonts/colors BeStudios deliberately avoids.
+
+**Editor-side link color (#98):** add `.tiptap a { … }` styling in `RichEditor.vue`
+so a set link is visible while editing.
 
 ## Goals
 
@@ -166,7 +184,9 @@ an explicit audit step:
 Be Studios sets its own `:features`/`:remove` to get the trimmed editor #98 asks
 for. Finished work goes to the project's "In Testing" bucket, not Done.
 
-## Out of scope (tracked separately)
+## Out of scope
 
-- #98: paragraph spacing not rendering (render CSS / saved markup).
-- #98 + #107: link visual styling in editor and rendered prose.
+Nothing from #98 is deferred — the toolbar layer system and both render-side fixes
+(block-flow spacing + link styling in `CpSafeHtml`, and editor-side link color) are
+all in scope. #107 (rendered link styling) is resolved by the same `CpSafeHtml`
+flow fix. Be Studios #106/#107/#110/#111 remain their own separate tickets.
