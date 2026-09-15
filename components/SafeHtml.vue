@@ -1,11 +1,10 @@
 <template>
-  <div v-html="clean" />
+  <!-- Thin alias: delegates to CpSafeHtml so there is ONE sanitized, flow-styled
+       implementation. A consumer's `class` falls through to CpSafeHtml's root
+       (merging with `cp-safe-html`), so site typography still overrides. -->
+  <CpSafeHtml :html="html" />
 </template>
 
 <script setup lang="ts">
-import { sanitize } from '../utils/sanitize'
-
-const props = defineProps<{ html?: string | null }>()
-
-const clean = computed(() => sanitize(props.html))
+defineProps<{ html?: string | null }>()
 </script>
