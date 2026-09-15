@@ -43,7 +43,7 @@
       <!-- Body -->
       <div>
         <label class="block text-sm font-medium text-slate-700 mb-1">Body</label>
-        <CpRichEditor v-model="form.body" placeholder="Page content…" />
+        <CpRichEditor v-model="form.body" placeholder="Page content…" :features="['decoration','blocks','layout','image']" />
       </div>
 
       <!-- SEO -->
