@@ -111,15 +111,17 @@ alignLeft, alignCenter, alignRight
 Documented in the component so nobody guesses. (undo / redo / clear-formatting are
 always present and not `remove`-able in v1.)
 
-### Default behavior — DECISION PENDING
+### Default behavior — DECIDED: minimal base (B)
 
-The one open decision, because it is the live-site blast radius:
+`<CpRichEditor>` with no props renders **base only** (bold, italic, link). Every
+richer control is opt-in. This is the cleanest footgun posture and the intended
+end state; the cost is that existing consumers must declare their `:features`
+explicitly or their editors lose buttons on next deploy.
 
-- **(A) Default = full set (backward-compatible).** `<CpRichEditor>` with no props
-  renders today's full toolbar; sites opt *down*. Live sites unchanged on next
-  deploy. **Recommended** unless we deliberately audit each live site.
-- **(B) Default = minimal base.** Safest footgun posture, but live sites lose
-  buttons on next deploy unless each is updated first.
+Chosen deliberately (2026-09-15): we update the existing sites as part of this
+work rather than default to backward-compatibility. See Rollout — every current
+`CpRichEditor` usage is audited and given an explicit `:features`/`:remove`
+**before** the layer change ships, so no live site silently loses controls.
 
 ## Internal structure
 
@@ -147,9 +149,22 @@ Resolve pipeline (pure, unit-testable, no editor needed):
 
 Per ClaudePress rule, a change to `main` reaches every consuming site on its next
 deploy, including `argyle-village-v2` and `infinity-graphics`, which are live and
-not on this box. The default-behavior decision above is chosen to make that safe.
-Be Studios then sets its own `:features`/`:remove` to get the trimmed editor #98
-asks for. Finished work goes to the project's "In Testing" bucket, not Done.
+not on this box. Because the default is now **minimal base (B)**, every existing
+consumer must be updated or its editor loses controls. The plan therefore includes
+an explicit audit step:
+
+1. Find every `CpRichEditor` / `<cp-rich-editor>` usage across all consuming sites
+   (local dev copies here, plus the live-only `argyle-village-v2` and
+   `infinity-graphics` — for those, update in their own repos; they cannot be
+   tested from this box, so state that at merge time).
+2. For each usage, set the `:features`/`:remove` that reproduces its current
+   toolbar (or the intended trimmed one, where a site owner has asked — e.g. Be
+   Studios #98).
+3. Land the consumer updates together with / ahead of the layer change so nothing
+   silently regresses.
+
+Be Studios sets its own `:features`/`:remove` to get the trimmed editor #98 asks
+for. Finished work goes to the project's "In Testing" bucket, not Done.
 
 ## Out of scope (tracked separately)
 
