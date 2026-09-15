@@ -38,7 +38,7 @@
 
       <div>
         <label class="block text-sm font-medium text-slate-700 mb-1">Body</label>
-        <CpRichEditor v-model="form.body" placeholder="Page content…" />
+        <CpRichEditor v-model="form.body" placeholder="Page content…" :features="['decoration','blocks','layout','image']" :remove="['strike']" />
       </div>
 
       <details class="border border-slate-200 rounded-md">
