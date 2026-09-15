@@ -40,6 +40,25 @@ describe('sanitize — the boundary holds (dangerous input stripped)', () => {
   })
 })
 
+describe('sanitize — empty list scaffolding stripped, blank lines kept', () => {
+  it('drops an empty <ol><li><p></p></li></ol> shell (no stray marker)', () => {
+    const out = sanitize('<p>3. Song</p><ol><li><p></p></li></ol><p>next</p>')
+    expect(out).not.toContain('<ol')
+    expect(out).not.toContain('<li')
+    expect(out).toContain('3. Song')
+    expect(out).toContain('next')
+  })
+  it('keeps a real ordered list', () => {
+    const out = sanitize('<ol><li>one</li><li>two</li></ol>')
+    expect(out).toContain('<ol')
+    expect(out).toContain('one')
+    expect(out).toContain('two')
+  })
+  it('does NOT drop an empty paragraph (authored blank line)', () => {
+    expect(sanitize('<p>a</p><p></p><p>b</p>')).toContain('<p></p>')
+  })
+})
+
 describe('sanitize — basics', () => {
   it('returns empty string for nullish input', () => {
     expect(sanitize(null)).toBe('')

@@ -57,6 +57,14 @@ export const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
         : attribs,
     }),
   },
+  // Drop empty list scaffolding the editor leaves behind — e.g. an
+  // <ol><li><p></p></li></ol> shell from a deleted list — which would otherwise
+  // render a stray "1." / bullet. Empty <p> is deliberately NOT dropped: it is
+  // an authored blank line (see SafeHtml's p:empty rule).
+  exclusiveFilter: (frame) =>
+    (frame.tag === 'li' || frame.tag === 'ol' || frame.tag === 'ul') &&
+    !frame.text.trim() &&
+    ((frame as { mediaChildren?: unknown[] }).mediaChildren?.length ?? 0) === 0,
 }
 
 export const sanitize = (html?: string | null): string =>
