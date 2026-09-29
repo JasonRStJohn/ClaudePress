@@ -57,6 +57,10 @@ const emitCardDimensions = computed(() =>
 
 const ogUrl = computed<string | null>(() => (siteUrl ? siteUrl + route.path : null))
 
+// Private routes (login, admin) are noindex; don't also nominate them as the
+// preferred URL.
+const canonicalUrl = computed<string | null>(() => (isNoindexPath(route.path) ? null : ogUrl.value))
+
 const imageAlt = computed<string | null>(
   () => props.imageAlt || settings?.og_image_alt || null,
 )
@@ -83,10 +87,10 @@ useSeoMeta({
 
 // Same URL as og:url: siteUrl + path, query string dropped, so tracking params
 // (?utm_*, ?fbclid) and the www/dev hostnames all point search engines at one
-// address. app.vue and pages both render this component; unhead dedupes
-// rel=canonical, and the key makes that explicit.
+// address. Skipped on noindex routes. app.vue and pages both render this
+// component; unhead dedupes rel=canonical, and the key makes that explicit.
 useHead({
-  link: () => (ogUrl.value ? [{ rel: 'canonical', href: ogUrl.value, key: 'canonical' }] : []),
+  link: () => (canonicalUrl.value ? [{ rel: 'canonical', href: canonicalUrl.value, key: 'canonical' }] : []),
 })
 </script>
 
