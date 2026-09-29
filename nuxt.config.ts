@@ -2,6 +2,14 @@
 // Sites extending this layer inherit pages, composables, components, and runtime config.
 // Override anything by declaring it in the consuming site's nuxt.config.ts.
 
+import { noindexPaths } from './utils/sitemap'
+
+// Private layer routes answer with a noindex header rather than a robots.txt
+// Disallow: a disallowed URL is never fetched, so its noindex is never seen,
+// and robots.txt would publish the admin paths. '/x/**' also matches bare '/x'.
+const noindexHeader = { headers: { 'x-robots-tag': 'noindex, nofollow' } }
+const noindexRules = Object.fromEntries(noindexPaths.map(p => [`${p}/**`, noindexHeader]))
+
 export default defineNuxtConfig({
   ssr: true,
 
@@ -17,6 +25,14 @@ export default defineNuxtConfig({
 
     // Secret used by the ISR revalidate webhook (PocketBase hook -> Nuxt).
     revalidateSecret: process.env.REVALIDATE_SECRET || '',
+
+    // /sitemap.xml inputs (server/routes/sitemap.xml.ts). postsPath is where
+    // posts are served ('' = none); extraPaths are routes the site owns in
+    // its own pages/ dir. Sites override in their own runtimeConfig.
+    sitemap: {
+      postsPath: '/blog',
+      extraPaths: [] as string[],
+    },
 
     public: {
       // Public URL the browser uses to reach PocketBase directly
@@ -65,8 +81,12 @@ export default defineNuxtConfig({
       '/': { isr: 60 },
       '/blog': { isr: 60 },
       '/blog/**': { isr: 300 },
+      ...noindexRules,
       // Admin pages are client-only — no SSR needed for auth-gated content.
-      '/admin/**': { ssr: false },
+      // Replaces the generated '/admin/**' entry, so it restates the header.
+      '/admin/**': { ssr: false, ...noindexHeader },
+      // Rebuilt from PocketBase at most hourly; crawlers fetch it rarely.
+      '/sitemap.xml': { isr: 3600 },
     },
   },
 
