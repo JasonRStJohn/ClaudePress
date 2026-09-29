@@ -80,6 +80,14 @@ useSeoMeta({
   twitterImageAlt: () => imageAlt.value || undefined,
   twitterSite: () => settings?.twitter_site || undefined,
 })
+
+// Same URL as og:url: siteUrl + path, query string dropped, so tracking params
+// (?utm_*, ?fbclid) and the www/dev hostnames all point search engines at one
+// address. app.vue and pages both render this component; unhead dedupes
+// rel=canonical, and the key makes that explicit.
+useHead({
+  link: () => (ogUrl.value ? [{ rel: 'canonical', href: ogUrl.value, key: 'canonical' }] : []),
+})
 </script>
 
 <template><div style="display:none" /></template>
