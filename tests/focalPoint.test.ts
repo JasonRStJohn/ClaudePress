@@ -64,12 +64,44 @@ describe('framingStyle', () => {
   })
 })
 
+describe('fit (show the whole photo)', () => {
+  it('switches the image to contain and ignores pan and zoom', () => {
+    expect(framingStyle(10, 90, 2.5, true)).toEqual({ objectFit: 'contain', objectPosition: '50% 50%' })
+  })
+
+  it('is read from the `_fit` sibling of a single-file field', () => {
+    const rec = { photo: 'a.jpg', photo_focal_x: 50, photo_focal_y: 50, photo_zoom: 1, photo_fit: true }
+    expect(readFraming(rec, 'photo')).toEqual({ x: 50, y: 50, zoom: 1, fit: true })
+  })
+
+  it('is read per file, and makes a framing non-default', () => {
+    const rec = { photo: ['a.jpg'], photo_framing: { 'a.jpg': { x: 50, y: 50, zoom: 1, fit: true } } }
+    const f = readFileFraming(rec, 'photo', 'a.jpg')
+    expect(f).toEqual({ x: 50, y: 50, zoom: 1, fit: true })
+    expect(isDefaultFraming(f)).toBe(false)
+  })
+
+  it('is kept by buildFramingMap, and dropped when switched back off', () => {
+    const map = buildFramingMap({
+      before: ['a.jpg', 'b.jpg'],
+      after: ['a.jpg', 'b.jpg'],
+      existing: {
+        'a.jpg': { x: 50, y: 50, zoom: 1, fit: true },
+        'b.jpg': { x: 50, y: 50, zoom: 1, fit: false },
+      },
+      added: [],
+    })
+    expect(map).toEqual({ 'a.jpg': { x: 50, y: 50, zoom: 1, fit: true } })
+  })
+})
+
 describe('framingFields', () => {
   it('derives the sibling field names from the image field', () => {
     expect(framingFields('sire_photo')).toEqual({
       x: 'sire_photo_focal_x',
       y: 'sire_photo_focal_y',
       zoom: 'sire_photo_zoom',
+      fit: 'sire_photo_fit',
     })
   })
 })

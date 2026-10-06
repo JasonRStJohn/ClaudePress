@@ -88,13 +88,19 @@ un-framed image renders exactly as before. PocketBase reads an empty number as
 `0`, so **zoom below 1 is what marks a record as never framed**; an editor must
 always save all three numbers together.
 
-- **Admin:** `<CpFocalPicker :src v-model:focal-x v-model:focal-y v-model:zoom aspect="4/3" />`.
+- **Admin:** `<CpFocalPicker :src v-model:focal-x v-model:focal-y v-model:zoom v-model:fit aspect="4/3" />`.
   Pass the **original** file URL (no `?thumb=`) and the `aspect` of the frame
   the image displays in, so the preview shows the real crop.
 - **Render:** `<CpFramedImage :record :field class="aspect-[4/3]" />`, or on an
   existing `<img>`: `:style="useImageFraming(record, 'X').style.value"`. The
   `<img>` must be `w-full h-full object-cover` inside an `overflow-hidden`
   frame, or the zoom spills out.
+
+**Show whole photo.** A fourth sibling, `X_fit` (bool), is for a photo the
+wrong shape for its frame: it is shown uncropped, pan and zoom are ignored, and
+`CpFramedImage` fills the leftover space with a blurred copy of the same file.
+A bare `<img :style>` gets the uncropped photo but no backdrop — use
+`CpFramedImage` (it also takes an explicit `:src` + `:framing`).
 
 **Multi-file fields** (`maxSelect > 1`) cannot use three numbers, so they carry
 one JSON sibling `X_framing` — `{ "<filename>": { x, y, zoom } }` — read with

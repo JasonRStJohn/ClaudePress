@@ -8,7 +8,7 @@
       <div
         ref="pad"
         class="relative w-64 max-w-full border border-slate-300 cursor-crosshair select-none touch-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-        :class="{ 'opacity-50 pointer-events-none': disabled }"
+        :class="{ 'opacity-50 pointer-events-none': disabled || fit }"
         tabindex="0"
         role="group"
         aria-label="Focal point. Drag, or use the arrow keys."
@@ -20,6 +20,7 @@
       >
         <img :src="src" alt="" class="w-full block pointer-events-none" draggable="false" />
         <div
+          v-if="!fit"
           class="absolute w-4 h-4 -ml-2 -mt-2 rounded-full border-2 border-white shadow ring-1 ring-black/40 bg-blue-600"
           :style="{ left: x + '%', top: y + '%' }"
         />
@@ -27,9 +28,13 @@
 
       <!-- Live preview of the true crop, at the aspect the site displays it -->
       <div class="w-48 shrink-0">
-        <div class="overflow-hidden border border-slate-300 bg-slate-100" :style="{ aspectRatio: aspect }">
-          <img :src="src" alt="" class="w-full h-full object-cover" :style="previewStyle" />
-        </div>
+        <CpFramedImage
+          :src="src"
+          :framing="{ x, y, zoom, fit }"
+          eager
+          class="border border-slate-300 bg-slate-100"
+          :style="{ aspectRatio: aspect }"
+        />
         <p class="text-xs text-slate-500 mt-1">How it will appear</p>
       </div>
     </div>
@@ -43,8 +48,8 @@
         :max="FRAMING_MAX_ZOOM"
         step="0.05"
         :value="zoom"
-        :disabled="disabled"
-        class="flex-1"
+        :disabled="disabled || fit"
+        class="flex-1 disabled:opacity-40"
         @input="onZoom"
       />
       <span class="text-xs font-medium text-slate-600 w-10 text-right">{{ zoom.toFixed(2) }}×</span>
@@ -57,11 +62,27 @@
         Reset
       </button>
     </div>
+
+    <label class="flex items-start gap-2 mt-3 text-sm text-slate-700 max-w-md">
+      <input
+        type="checkbox"
+        class="mt-0.5"
+        :checked="fit"
+        :disabled="disabled"
+        @change="emit('update:fit', ($event.target as HTMLInputElement).checked)"
+      />
+      <span>
+        <span class="font-medium">Show whole photo</span>
+        <span class="block text-xs text-slate-500">
+          For a photo the wrong shape for this frame. Nothing is cropped; the space around it is filled with a soft blur of the same photo.
+        </span>
+      </span>
+    </label>
   </div>
 </template>
 
 <script setup lang="ts">
-import { FRAMING_MAX_ZOOM, clampAxis, clampZoom, framingStyle, pointToFocal } from '../../utils/focalPoint'
+import { FRAMING_MAX_ZOOM, clampAxis, clampZoom, pointToFocal } from '../../utils/focalPoint'
 
 const props = withDefaults(defineProps<{
   /** The original, uncropped image — not a thumb, so the dot maps to the real photo. */
@@ -69,6 +90,8 @@ const props = withDefaults(defineProps<{
   focalX?: number | null
   focalY?: number | null
   zoom?: number | null
+  /** Show the whole photo instead of filling the frame; pan and zoom are then off. */
+  fit?: boolean
   /** CSS aspect-ratio of the frame the image displays in, e.g. '4/3', '1/1'. */
   aspect?: string
   disabled?: boolean
@@ -78,6 +101,7 @@ const emit = defineEmits<{
   'update:focalX': [n: number]
   'update:focalY': [n: number]
   'update:zoom': [n: number]
+  'update:fit': [on: boolean]
 }>()
 
 const pad = ref<HTMLElement | null>(null)
@@ -86,8 +110,8 @@ const zoomId = useId()
 const x = computed(() => clampAxis(props.focalX))
 const y = computed(() => clampAxis(props.focalY))
 const zoom = computed(() => clampZoom(props.zoom))
-const previewStyle = computed(() => framingStyle(x.value, y.value, zoom.value))
-const isDefault = computed(() => x.value === 50 && y.value === 50 && zoom.value === 1)
+const fit = computed(() => props.fit === true)
+const isDefault = computed(() => x.value === 50 && y.value === 50 && zoom.value === 1 && !fit.value)
 
 const setFocal = (fx: number, fy: number) => {
   emit('update:focalX', clampAxis(fx))
@@ -96,7 +120,7 @@ const setFocal = (fx: number, fy: number) => {
 
 let dragging = false
 const moveTo = (e: PointerEvent) => {
-  if (!pad.value) return
+  if (!pad.value || fit.value) return
   const p = pointToFocal(e.clientX, e.clientY, pad.value.getBoundingClientRect())
   setFocal(p.x, p.y)
 }
@@ -115,7 +139,7 @@ const onKey = (e: KeyboardEvent) => {
     ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step],
   }
   const d = moves[e.key]
-  if (!d) return
+  if (!d || fit.value) return
   e.preventDefault()
   setFocal(x.value + d[0], y.value + d[1])
 }
@@ -125,5 +149,6 @@ const onZoom = (e: Event) => emit('update:zoom', clampZoom((e.target as HTMLInpu
 const reset = () => {
   setFocal(50, 50)
   emit('update:zoom', 1)
+  emit('update:fit', false)
 }
 </script>

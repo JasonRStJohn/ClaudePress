@@ -14,6 +14,6 @@ export const useImageFraming = (
   field: MaybeRefOrGetter<string>,
 ) => {
   const framing = computed(() => readFraming(toValue(record), toValue(field)))
-  const style = computed(() => framingStyle(framing.value.x, framing.value.y, framing.value.zoom))
+  const style = computed(() => framingStyle(framing.value.x, framing.value.y, framing.value.zoom, framing.value.fit))
   return { framing, style }
 }

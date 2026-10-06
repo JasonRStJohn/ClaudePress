@@ -5,6 +5,10 @@
 // percent) and `X_zoom` (1 = cover, up to FRAMING_MAX_ZOOM). Anything absent
 // or invalid collapses to 50/50/1, so an un-framed image centre-crops exactly
 // like a plain `object-cover`.
+//
+// `X_fit` (bool) is the escape hatch for a photo the wrong shape for its frame:
+// show the whole photo instead of filling the frame. Pan and zoom do not apply
+// then; the render site fills the leftover space (see CpFramedImage).
 
 // 3x rescues a small subject; past that even a decent phone photo goes soft.
 export const FRAMING_MAX_ZOOM = 3
@@ -29,9 +33,12 @@ export interface Framing {
   x: number
   y: number
   zoom: number
+  /** Show the whole photo rather than filling the frame. Omitted when false. */
+  fit?: boolean
 }
 
 export interface FramingStyle {
+  objectFit?: 'contain'
   objectPosition: string
   transform?: string
   transformOrigin?: string
@@ -42,7 +49,9 @@ export interface FramingStyle {
  * `object-position` puts the focal point at the same percentage of the frame,
  * so scaling from that origin zooms in on it rather than toward the centre.
  */
-export const framingStyle = (x: unknown, y: unknown, zoom: unknown): FramingStyle => {
+export const framingStyle = (x: unknown, y: unknown, zoom: unknown, fit?: unknown): FramingStyle => {
+  // Inline object-fit overrides the img's `object-cover` class.
+  if (fit === true) return { objectFit: 'contain', objectPosition: '50% 50%' }
   const pos = `${clampAxis(x)}% ${clampAxis(y)}%`
   const z = clampZoom(zoom)
   if (z === 1) return { objectPosition: pos }
@@ -53,6 +62,7 @@ export const framingFields = (field: string) => ({
   x: `${field}_focal_x`,
   y: `${field}_focal_y`,
   zoom: `${field}_zoom`,
+  fit: `${field}_fit`,
 })
 
 export const readFraming = (
@@ -68,6 +78,7 @@ export const readFraming = (
     x: clampAxis(record?.[f.x]),
     y: clampAxis(record?.[f.y]),
     zoom: clampZoom(record?.[f.zoom]),
+    ...(record?.[f.fit] === true ? { fit: true } : {}),
   }
 }
 
@@ -92,12 +103,13 @@ export const pointToFocal = (
 export const framingMapField = (field: string) => `${field}_framing`
 
 export const isDefaultFraming = (f: Framing): boolean =>
-  f.x === 50 && f.y === 50 && f.zoom === 1
+  f.x === 50 && f.y === 50 && f.zoom === 1 && !f.fit
 
 const normalize = (raw: any): Framing => ({
   x: clampAxis(raw?.x),
   y: clampAxis(raw?.y),
   zoom: clampZoom(raw?.zoom),
+  ...(raw?.fit === true ? { fit: true } : {}),
 })
 
 export const readFileFraming = (
