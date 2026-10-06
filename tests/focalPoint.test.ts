@@ -84,6 +84,16 @@ describe('readFraming', () => {
     expect(readFraming(null, 'photo')).toEqual({ x: 50, y: 50, zoom: 1 })
     expect(readFraming({ photo: 'a.jpg' }, 'photo')).toEqual({ x: 50, y: 50, zoom: 1 })
   })
+
+  it('centres a record PocketBase has just migrated, where empty numbers read as 0', () => {
+    const rec = { photo: 'a.jpg', photo_focal_x: 0, photo_focal_y: 0, photo_zoom: 0 }
+    expect(readFraming(rec, 'photo')).toEqual({ x: 50, y: 50, zoom: 1 })
+  })
+
+  it('keeps a deliberate top-left focal point once framing has been saved', () => {
+    const rec = { photo: 'a.jpg', photo_focal_x: 0, photo_focal_y: 0, photo_zoom: 1 }
+    expect(readFraming(rec, 'photo')).toEqual({ x: 0, y: 0, zoom: 1 })
+  })
 })
 
 describe('pointToFocal', () => {

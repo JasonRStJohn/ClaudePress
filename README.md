@@ -84,7 +84,9 @@ touched; three numbers are stored beside the image and applied in CSS.
 number fields `X_focal_x`, `X_focal_y` (0–100) and `X_zoom` (1–3, see
 `FRAMING_MAX_ZOOM` in `utils/focalPoint.ts`). The site adds those three fields
 in its own migration. Missing or empty values mean centre, no zoom — an
-un-framed image renders exactly as before.
+un-framed image renders exactly as before. PocketBase reads an empty number as
+`0`, so **zoom below 1 is what marks a record as never framed**; an editor must
+always save all three numbers together.
 
 - **Admin:** `<CpFocalPicker :src v-model:focal-x v-model:focal-y v-model:zoom aspect="4/3" />`.
   Pass the **original** file URL (no `?thumb=`) and the `aspect` of the frame

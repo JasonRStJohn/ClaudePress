@@ -60,6 +60,10 @@ export const readFraming = (
   field: string,
 ): Framing => {
   const f = framingFields(field)
+  // PocketBase returns 0 for an empty number field, and 0/0 is a real focal
+  // point (top-left). Zoom is the tell: a saved framing always has zoom >= 1,
+  // so a zoom below that means the record was never framed.
+  if (!(toNumber(record?.[f.zoom]) >= 1)) return { x: 50, y: 50, zoom: 1 }
   return {
     x: clampAxis(record?.[f.x]),
     y: clampAxis(record?.[f.y]),
