@@ -73,6 +73,30 @@ unset, only an already-absolute image (a PocketBase file URL) is emitted and
 `og:url` is skipped — so a site with no `SITE_URL` and only a bundled `/og.png`
 gets a text-only card, not a broken image.
 
+## Image framing (focal point + zoom)
+
+A fixed-aspect frame with `object-cover` centre-crops whatever it is given, so
+an off-centre or distant subject gets cut badly. Framing lets an editor pick
+the focal point and zoom in. It is **non-destructive**: the upload is never
+touched; three numbers are stored beside the image and applied in CSS.
+
+**Convention.** For a single-file image field `X`, the same record carries
+number fields `X_focal_x`, `X_focal_y` (0–100) and `X_zoom` (1–3, see
+`FRAMING_MAX_ZOOM` in `utils/focalPoint.ts`). The site adds those three fields
+in its own migration. Missing or empty values mean centre, no zoom — an
+un-framed image renders exactly as before.
+
+- **Admin:** `<CpFocalPicker :src v-model:focal-x v-model:focal-y v-model:zoom aspect="4/3" />`.
+  Pass the **original** file URL (no `?thumb=`) and the `aspect` of the frame
+  the image displays in, so the preview shows the real crop.
+- **Render:** `<CpFramedImage :record :field class="aspect-[4/3]" />`, or on an
+  existing `<img>`: `:style="useImageFraming(record, 'X').style.value"`. The
+  `<img>` must be `w-full h-full object-cover` inside an `overflow-hidden`
+  frame, or the zoom spills out.
+
+Multi-file fields (`maxSelect > 1`) are not covered: three numbers per field
+cannot describe several photos.
+
 ## Account & password management
 
 The layer ships self-service password flows on top of PocketBase's `users`
