@@ -79,3 +79,53 @@ export const pointToFocal = (
     y: Math.round(clampAxis(((clientY - rect.top) / rect.height) * 100)),
   }
 }
+
+// ── Multi-file fields ───────────────────────────────────────────────────────
+// A field holding several photos (maxSelect > 1) cannot use three numbers, so
+// it carries one JSON sibling `X_framing`: { "<filename>": { x, y, zoom } }.
+// Only files that have been framed get an entry.
+
+export const framingMapField = (field: string) => `${field}_framing`
+
+export const isDefaultFraming = (f: Framing): boolean =>
+  f.x === 50 && f.y === 50 && f.zoom === 1
+
+const normalize = (raw: any): Framing => ({
+  x: clampAxis(raw?.x),
+  y: clampAxis(raw?.y),
+  zoom: clampZoom(raw?.zoom),
+})
+
+export const readFileFraming = (
+  record: Record<string, any> | null | undefined,
+  field: string,
+  filename: string,
+): Framing => {
+  const map = record?.[framingMapField(field)]
+  const raw = map && typeof map === 'object' ? map[filename] : undefined
+  return normalize(raw && typeof raw === 'object' ? raw : undefined)
+}
+
+/**
+ * The map to store after a save. PocketBase renames uploads, so a new file's
+ * name is only known from the saved record: the names in `after` that were
+ * not in `before` are the new uploads, in the order they were sent.
+ */
+export const buildFramingMap = (opts: {
+  before: string[]
+  after: string[]
+  existing: Record<string, Framing>
+  added: Framing[]
+}): Record<string, Framing> => {
+  const map: Record<string, Framing> = {}
+  const put = (name: string, raw: Framing | undefined) => {
+    const f = normalize(raw)
+    if (!isDefaultFraming(f)) map[name] = f
+  }
+  const newNames = opts.after.filter(n => !opts.before.includes(n))
+  for (const name of opts.after) {
+    const i = newNames.indexOf(name)
+    put(name, i === -1 ? opts.existing[name] : opts.added[i])
+  }
+  return map
+}

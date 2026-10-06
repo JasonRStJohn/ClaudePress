@@ -3,9 +3,13 @@ import {
   FRAMING_MAX_ZOOM,
   clampAxis,
   clampZoom,
+  buildFramingMap,
   framingFields,
+  framingMapField,
   framingStyle,
+  isDefaultFraming,
   pointToFocal,
+  readFileFraming,
   readFraming,
 } from '../utils/focalPoint'
 
@@ -95,5 +99,68 @@ describe('pointToFocal', () => {
 
   it('centres when the pad has no size yet', () => {
     expect(pointToFocal(10, 10, { left: 0, top: 0, width: 0, height: 0 })).toEqual({ x: 50, y: 50 })
+  })
+})
+
+describe('multi-file framing', () => {
+  const rec = {
+    photo: ['a.jpg', 'b.jpg'],
+    photo_framing: { 'a.jpg': { x: 10, y: 20, zoom: 2 }, 'gone.jpg': { x: 1, y: 1, zoom: 3 } },
+  }
+
+  it('names the JSON sibling field', () => {
+    expect(framingMapField('photo')).toBe('photo_framing')
+  })
+
+  it('reads one file\'s framing, defaulting for files with none', () => {
+    expect(readFileFraming(rec, 'photo', 'a.jpg')).toEqual({ x: 10, y: 20, zoom: 2 })
+    expect(readFileFraming(rec, 'photo', 'b.jpg')).toEqual({ x: 50, y: 50, zoom: 1 })
+  })
+
+  it('tolerates a missing, null or malformed map', () => {
+    expect(readFileFraming({ photo: ['a.jpg'] }, 'photo', 'a.jpg')).toEqual({ x: 50, y: 50, zoom: 1 })
+    expect(readFileFraming({ photo_framing: null }, 'photo', 'a.jpg')).toEqual({ x: 50, y: 50, zoom: 1 })
+    expect(readFileFraming({ photo_framing: 'oops' }, 'photo', 'a.jpg')).toEqual({ x: 50, y: 50, zoom: 1 })
+    expect(readFileFraming({ photo_framing: { 'a.jpg': 7 } }, 'photo', 'a.jpg')).toEqual({ x: 50, y: 50, zoom: 1 })
+  })
+
+  it('knows an untouched framing from a set one', () => {
+    expect(isDefaultFraming({ x: 50, y: 50, zoom: 1 })).toBe(true)
+    expect(isDefaultFraming({ x: 50, y: 40, zoom: 1 })).toBe(false)
+    expect(isDefaultFraming({ x: 50, y: 50, zoom: 1.2 })).toBe(false)
+  })
+})
+
+describe('buildFramingMap', () => {
+  const f = (x: number, y: number, zoom: number) => ({ x, y, zoom })
+
+  it('keeps framing for kept files and drops removed ones', () => {
+    const map = buildFramingMap({
+      before: ['a.jpg', 'b.jpg'],
+      after: ['a.jpg'],
+      existing: { 'a.jpg': f(10, 20, 2), 'b.jpg': f(5, 5, 1) },
+      added: [],
+    })
+    expect(map).toEqual({ 'a.jpg': f(10, 20, 2) })
+  })
+
+  it('assigns new uploads their framing in upload order, under the names PocketBase gave them', () => {
+    const map = buildFramingMap({
+      before: ['a.jpg'],
+      after: ['a.jpg', 'new1_x9.jpg', 'new2_k2.jpg'],
+      existing: {},
+      added: [f(30, 30, 1), f(70, 10, 1.5)],
+    })
+    expect(map).toEqual({ 'new1_x9.jpg': f(30, 30, 1), 'new2_k2.jpg': f(70, 10, 1.5) })
+  })
+
+  it('stores nothing for files left at the default', () => {
+    const map = buildFramingMap({
+      before: [],
+      after: ['n_1.jpg'],
+      existing: {},
+      added: [f(50, 50, 1)],
+    })
+    expect(map).toEqual({})
   })
 })

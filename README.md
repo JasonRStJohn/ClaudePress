@@ -94,8 +94,12 @@ un-framed image renders exactly as before.
   `<img>` must be `w-full h-full object-cover` inside an `overflow-hidden`
   frame, or the zoom spills out.
 
-Multi-file fields (`maxSelect > 1`) are not covered: three numbers per field
-cannot describe several photos.
+**Multi-file fields** (`maxSelect > 1`) cannot use three numbers, so they carry
+one JSON sibling `X_framing` — `{ "<filename>": { x, y, zoom } }` — read with
+`readFileFraming(record, 'X', filename)`. PocketBase renames uploads, so a new
+file's framing can only be keyed after the save: `buildFramingMap` matches new
+uploads to their saved names by order, and the editor writes the map in a
+second update.
 
 ## Account & password management
 
