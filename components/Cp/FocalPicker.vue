@@ -2,6 +2,7 @@
   <div>
     <p class="text-xs text-slate-500 mb-2">
       <template v-if="fit">The whole photo is shown, so there is nothing to position.</template>
+      <template v-else-if="auto && !canPan">The whole photo is shown. Zoom in to crop it, then drag to position it.</template>
       <template v-else-if="canPan">Drag the photo to position it. Zoom in if the subject sits too small.</template>
       <template v-else>This photo already fits the frame. Zoom in to reposition it.</template>
     </p>
@@ -14,7 +15,7 @@
         disabled ? 'opacity-50 pointer-events-none' : '',
         !canPan ? 'cursor-default' : dragging ? 'cursor-grabbing' : 'cursor-grab',
       ]"
-      :style="{ aspectRatio: aspect }"
+      :style="{ aspectRatio: frameAspect }"
       tabindex="0"
       role="group"
       aria-label="Photo position. Drag the photo, or use the arrow keys."
@@ -52,7 +53,7 @@
       </button>
     </div>
 
-    <label class="flex items-start gap-2 mt-3 text-sm text-slate-700 max-w-md">
+    <label v-if="!auto" class="flex items-start gap-2 mt-3 text-sm text-slate-700 max-w-md">
       <input
         type="checkbox"
         class="mt-0.5"
@@ -81,7 +82,11 @@ const props = withDefaults(defineProps<{
   zoom?: number | null
   /** Show the whole photo instead of filling the frame; pan and zoom are then off. */
   fit?: boolean
-  /** CSS aspect-ratio of the frame the image displays in, e.g. '4/3', '1/1'. */
+  /**
+   * CSS aspect-ratio of the frame the image displays in, e.g. '4/3', '1/1'.
+   * 'auto' is for an image shown at its own shape: the frame takes the photo's
+   * proportions, so zoom crops within them and "show whole photo" is moot.
+   */
   aspect?: string
   disabled?: boolean
 }>(), { aspect: '4/3' })
@@ -99,7 +104,8 @@ const zoomId = useId()
 const x = computed(() => clampAxis(props.focalX))
 const y = computed(() => clampAxis(props.focalY))
 const zoom = computed(() => clampZoom(props.zoom))
-const fit = computed(() => props.fit === true)
+const auto = computed(() => props.aspect === 'auto')
+const fit = computed(() => props.fit === true && !auto.value)
 const isDefault = computed(() => x.value === 50 && y.value === 50 && zoom.value === 1 && !fit.value)
 
 // The photo's real size decides how far it can travel in the frame. The file
@@ -115,12 +121,19 @@ watch(() => props.src, (src) => {
   img.src = src
 }, { immediate: true })
 
+const frameAspect = computed(() => {
+  if (!auto.value) return props.aspect
+  return natural.value.width ? `${natural.value.width}/${natural.value.height}` : '4/3'
+})
+
 const frameSize = () => ({ width: frame.value?.clientWidth ?? 0, height: frame.value?.clientHeight ?? 0 })
 
 // A photo the same shape as the frame has nowhere to go until it is zoomed.
 const canPan = computed(() => {
   if (fit.value || props.disabled) return false
-  if (zoom.value > 1 || !natural.value.width) return true
+  if (zoom.value > 1) return true
+  if (auto.value) return false
+  if (!natural.value.width) return true
   const [w, h] = props.aspect.split('/').map(Number)
   if (!w || !h) return true
   return Math.abs(natural.value.width / natural.value.height - w / h) > 0.01

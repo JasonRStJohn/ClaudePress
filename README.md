@@ -92,7 +92,12 @@ always save all three numbers together.
   Pass the **original** file URL (no `?thumb=`) and the `aspect` of the frame
   the image displays in. The picker is that one frame, showing the real crop;
   the editor drags the photo inside it to pan (`panFocal`) and zooms with the
-  slider.
+  slider. `aspect="auto"` is for an image the site shows at its own shape (no
+  fixed frame): zoom then crops within the photo's proportions. Render those
+  with the framing style on a plain `w-full` `<img>` inside an
+  `overflow-hidden` wrapper.
+- **Editor state:** `useFramingForm('X')` gives `{ framing, load, reset, appendTo }`
+  for a single-file field, so every sibling is saved together.
 - **Render:** `<CpFramedImage :record :field class="aspect-[4/3]" />`, or on an
   existing `<img>`: `:style="useImageFraming(record, 'X').style.value"`. The
   `<img>` must be `w-full h-full object-cover` inside an `overflow-hidden`
