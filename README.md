@@ -90,7 +90,9 @@ always save all three numbers together.
 
 - **Admin:** `<CpFocalPicker :src v-model:focal-x v-model:focal-y v-model:zoom v-model:fit aspect="4/3" />`.
   Pass the **original** file URL (no `?thumb=`) and the `aspect` of the frame
-  the image displays in, so the preview shows the real crop.
+  the image displays in. The picker is that one frame, showing the real crop;
+  the editor drags the photo inside it to pan (`panFocal`) and zooms with the
+  slider.
 - **Render:** `<CpFramedImage :record :field class="aspect-[4/3]" />`, or on an
   existing `<img>`: `:style="useImageFraming(record, 'X').style.value"`. The
   `<img>` must be `w-full h-full object-cover` inside an `overflow-hidden`

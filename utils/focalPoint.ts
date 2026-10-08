@@ -82,16 +82,37 @@ export const readFraming = (
   }
 }
 
-/** Pointer position over the picker pad → focal point in whole percent. */
-export const pointToFocal = (
-  clientX: number,
-  clientY: number,
-  rect: { left: number; top: number; width: number; height: number },
+/**
+ * Dragging the framed photo itself → the focal point that keeps it under the
+ * pointer. With `framingStyle`, a focal axis running 0 → 100 slides the photo
+ * across exactly its overflow on that axis (zoomed size minus frame size), so
+ * the mapping is linear: a drag of the whole overflow is a change of 100.
+ * An axis with no overflow cannot pan and keeps its starting value.
+ *
+ * Always pass the focal point and pointer delta from the *start* of the drag,
+ * not the previous move, so rounding does not accumulate.
+ */
+export const panFocal = (
+  start: { x: number; y: number },
+  dx: number,
+  dy: number,
+  frame: { width: number; height: number },
+  natural: { width: number; height: number },
+  zoom: unknown,
 ): { x: number; y: number } => {
-  if (!rect.width || !rect.height) return { x: 50, y: 50 }
+  if (!(frame.width > 0 && frame.height > 0 && natural.width > 0 && natural.height > 0)) return start
+  const cover = Math.max(frame.width / natural.width, frame.height / natural.height)
+  const z = clampZoom(zoom)
+  const axis = (from: number, delta: number, size: number, frameSize: number) => {
+    const overflow = size * cover * z - frameSize
+    // Under a pixel of overflow is float noise from the cover fit, not room to pan.
+    if (overflow < 1) return from
+    // Dragging right pulls the photo right, which is a lower focal value.
+    return Math.round(clampAxis(from - (delta / overflow) * 100) * 10) / 10
+  }
   return {
-    x: Math.round(clampAxis(((clientX - rect.left) / rect.width) * 100)),
-    y: Math.round(clampAxis(((clientY - rect.top) / rect.height) * 100)),
+    x: axis(start.x, dx, natural.width, frame.width),
+    y: axis(start.y, dy, natural.height, frame.height),
   }
 }
 

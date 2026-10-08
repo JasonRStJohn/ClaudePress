@@ -8,7 +8,7 @@ import {
   framingMapField,
   framingStyle,
   isDefaultFraming,
-  pointToFocal,
+  panFocal,
   readFileFraming,
   readFraming,
 } from '../utils/focalPoint'
@@ -128,19 +128,38 @@ describe('readFraming', () => {
   })
 })
 
-describe('pointToFocal', () => {
-  const rect = { left: 100, top: 50, width: 200, height: 400 }
+describe('panFocal', () => {
+  const frame = { width: 400, height: 300 }
+  // 800x300 photo in a 4:3 frame: covers at 1x, 400px of sideways overflow.
+  const wide = { width: 800, height: 300 }
 
-  it('maps a pointer position to whole percentages of the pad', () => {
-    expect(pointToFocal(150, 350, rect)).toEqual({ x: 25, y: 75 })
+  it('dragging the whole overflow moves the focal point end to end', () => {
+    expect(panFocal({ x: 50, y: 50 }, 200, 0, frame, wide, 1)).toEqual({ x: 0, y: 50 })
+    expect(panFocal({ x: 50, y: 50 }, -200, 0, frame, wide, 1)).toEqual({ x: 100, y: 50 })
   })
 
-  it('clamps a drag that leaves the pad', () => {
-    expect(pointToFocal(0, 9999, rect)).toEqual({ x: 0, y: 100 })
+  it('dragging right lowers x, and the photo follows the pointer 1:1', () => {
+    expect(panFocal({ x: 50, y: 50 }, 40, 0, frame, wide, 1).x).toBe(40)
   })
 
-  it('centres when the pad has no size yet', () => {
-    expect(pointToFocal(10, 10, { left: 0, top: 0, width: 0, height: 0 })).toEqual({ x: 50, y: 50 })
+  it('leaves an axis with no overflow alone', () => {
+    expect(panFocal({ x: 50, y: 50 }, 0, 80, frame, wide, 1).y).toBe(50)
+  })
+
+  it('zooming in opens up the other axis and lengthens the drag', () => {
+    // At 2x: 1600x600 in 400x300 → 1200px sideways, 300px vertical overflow.
+    expect(panFocal({ x: 50, y: 50 }, 120, 30, frame, wide, 2)).toEqual({ x: 40, y: 40 })
+  })
+
+  it('clamps at the edges and rounds to a tenth', () => {
+    expect(panFocal({ x: 10, y: 50 }, 9999, 0, frame, wide, 1).x).toBe(0)
+    expect(panFocal({ x: 50, y: 50 }, 1, 0, frame, wide, 1).x).toBe(49.8)
+  })
+
+  it('returns the start point until the photo and frame have a size', () => {
+    const start = { x: 30, y: 70 }
+    expect(panFocal(start, 50, 50, { width: 0, height: 0 }, wide, 1)).toEqual(start)
+    expect(panFocal(start, 50, 50, frame, { width: 0, height: 0 }, 1)).toEqual(start)
   })
 })
 

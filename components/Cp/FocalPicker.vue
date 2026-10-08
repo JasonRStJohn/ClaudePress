@@ -1,42 +1,31 @@
 <template>
   <div>
     <p class="text-xs text-slate-500 mb-2">
-      Drag the dot onto the subject, then zoom in if it sits too small in the frame.
+      <template v-if="fit">The whole photo is shown, so there is nothing to position.</template>
+      <template v-else-if="canPan">Drag the photo to position it. Zoom in if the subject sits too small.</template>
+      <template v-else>This photo already fits the frame. Zoom in to reposition it.</template>
     </p>
-    <div class="flex flex-wrap items-start gap-6">
-      <!-- The full, uncropped image with a draggable focal dot -->
-      <div
-        ref="pad"
-        class="relative w-64 max-w-full border border-slate-300 cursor-crosshair select-none touch-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-        :class="{ 'opacity-50 pointer-events-none': disabled || fit }"
-        tabindex="0"
-        role="group"
-        aria-label="Focal point. Drag, or use the arrow keys."
-        @pointerdown="onDown"
-        @pointermove="onMove"
-        @pointerup="onUp"
-        @pointercancel="onUp"
-        @keydown="onKey"
-      >
-        <img :src="src" alt="" class="w-full block pointer-events-none" draggable="false" />
-        <div
-          v-if="!fit"
-          class="absolute w-4 h-4 -ml-2 -mt-2 rounded-full border-2 border-white shadow ring-1 ring-black/40 bg-blue-600"
-          :style="{ left: x + '%', top: y + '%' }"
-        />
-      </div>
 
-      <!-- Live preview of the true crop, at the aspect the site displays it -->
-      <div class="w-48 shrink-0">
-        <CpFramedImage
-          :src="src"
-          :framing="{ x, y, zoom, fit }"
-          eager
-          class="border border-slate-300 bg-slate-100"
-          :style="{ aspectRatio: aspect }"
-        />
-        <p class="text-xs text-slate-500 mt-1">How it will appear</p>
-      </div>
+    <!-- The frame as the site shows it; dragging the photo pans it in place. -->
+    <div
+      ref="frame"
+      class="w-72 max-w-full border border-slate-300 bg-slate-100 select-none touch-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+      :class="[
+        disabled ? 'opacity-50 pointer-events-none' : '',
+        !canPan ? 'cursor-default' : dragging ? 'cursor-grabbing' : 'cursor-grab',
+      ]"
+      :style="{ aspectRatio: aspect }"
+      tabindex="0"
+      role="group"
+      aria-label="Photo position. Drag the photo, or use the arrow keys."
+      @pointerdown="onDown"
+      @pointermove="onMove"
+      @pointerup="onUp"
+      @pointercancel="onUp"
+      @dragstart.prevent
+      @keydown="onKey"
+    >
+      <CpFramedImage :src="src" :framing="{ x, y, zoom, fit }" eager class="w-full h-full pointer-events-none" />
     </div>
 
     <div class="flex items-center gap-3 mt-3 max-w-md">
@@ -82,10 +71,10 @@
 </template>
 
 <script setup lang="ts">
-import { FRAMING_MAX_ZOOM, clampAxis, clampZoom, pointToFocal } from '../../utils/focalPoint'
+import { FRAMING_MAX_ZOOM, clampAxis, clampZoom, panFocal } from '../../utils/focalPoint'
 
 const props = withDefaults(defineProps<{
-  /** The original, uncropped image — not a thumb, so the dot maps to the real photo. */
+  /** The original, uncropped image — not a thumb, which PocketBase has already cropped. */
   src: string
   focalX?: number | null
   focalY?: number | null
@@ -104,7 +93,7 @@ const emit = defineEmits<{
   'update:fit': [on: boolean]
 }>()
 
-const pad = ref<HTMLElement | null>(null)
+const frame = ref<HTMLElement | null>(null)
 const zoomId = useId()
 
 const x = computed(() => clampAxis(props.focalX))
@@ -113,26 +102,52 @@ const zoom = computed(() => clampZoom(props.zoom))
 const fit = computed(() => props.fit === true)
 const isDefault = computed(() => x.value === 50 && y.value === 50 && zoom.value === 1 && !fit.value)
 
+// The photo's real size decides how far it can travel in the frame. The file
+// is the one CpFramedImage shows, so this is served from cache.
+const natural = ref({ width: 0, height: 0 })
+watch(() => props.src, (src) => {
+  natural.value = { width: 0, height: 0 }
+  if (!import.meta.client || !src) return
+  const img = new Image()
+  img.onload = () => {
+    if (props.src === src) natural.value = { width: img.naturalWidth, height: img.naturalHeight }
+  }
+  img.src = src
+}, { immediate: true })
+
+const frameSize = () => ({ width: frame.value?.clientWidth ?? 0, height: frame.value?.clientHeight ?? 0 })
+
+// A photo the same shape as the frame has nowhere to go until it is zoomed.
+const canPan = computed(() => {
+  if (fit.value || props.disabled) return false
+  if (zoom.value > 1 || !natural.value.width) return true
+  const [w, h] = props.aspect.split('/').map(Number)
+  if (!w || !h) return true
+  return Math.abs(natural.value.width / natural.value.height - w / h) > 0.01
+})
+
 const setFocal = (fx: number, fy: number) => {
   emit('update:focalX', clampAxis(fx))
   emit('update:focalY', clampAxis(fy))
 }
 
-let dragging = false
-const moveTo = (e: PointerEvent) => {
-  if (!pad.value || fit.value) return
-  const p = pointToFocal(e.clientX, e.clientY, pad.value.getBoundingClientRect())
+const dragging = ref(false)
+let origin = { px: 0, py: 0, x: 50, y: 50 }
+const onDown = (e: PointerEvent) => {
+  if (!canPan.value) return
+  dragging.value = true
+  origin = { px: e.clientX, py: e.clientY, x: x.value, y: y.value }
+  // Capture keeps the drag alive when the pointer leaves the frame.
+  frame.value?.setPointerCapture(e.pointerId)
+}
+const onMove = (e: PointerEvent) => {
+  if (!dragging.value) return
+  const p = panFocal(origin, e.clientX - origin.px, e.clientY - origin.py, frameSize(), natural.value, zoom.value)
   setFocal(p.x, p.y)
 }
-const onDown = (e: PointerEvent) => {
-  dragging = true
-  // Capture keeps the drag alive when the pointer leaves the pad.
-  pad.value?.setPointerCapture(e.pointerId)
-  moveTo(e)
-}
-const onMove = (e: PointerEvent) => { if (dragging) moveTo(e) }
-const onUp = () => { dragging = false }
+const onUp = () => { dragging.value = false }
 
+// Arrows move the view across the photo: right shows more of its right side.
 const onKey = (e: KeyboardEvent) => {
   const step = e.shiftKey ? 10 : 1
   const moves: Record<string, [number, number]> = {
