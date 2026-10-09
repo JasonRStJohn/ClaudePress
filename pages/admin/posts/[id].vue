@@ -140,7 +140,20 @@
                     type="file"
                     accept="image/*"
                     :disabled="saving"
+                    @change="onCoverChange"
                     class="w-full text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-sm file:font-medium file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
+                />
+                <!-- Image framing: only for sites whose posts collection carries
+                     the cover_focal_x / _focal_y / _zoom fields (see README).
+                     The cover shows at the photo's own shape, hence "auto". -->
+                <CpFocalPicker
+                    v-if="framingSupported && coverPickerUrl"
+                    :src="coverPickerUrl"
+                    v-model:focal-x="coverFraming.framing.x"
+                    v-model:focal-y="coverFraming.framing.y"
+                    v-model:zoom="coverFraming.framing.zoom"
+                    aspect="auto"
+                    class="mt-3"
                 />
             </div>
 
@@ -219,6 +232,17 @@ const form = reactive({
     published: false,
 });
 
+const coverFraming = useFramingForm("cover", { fit: false });
+const framingSupported = ref(false);
+const newCoverUrl = ref<string | null>(null);
+const coverPickerUrl = computed(() => newCoverUrl.value ?? currentImageUrl.value);
+const onCoverChange = () => {
+    if (newCoverUrl.value) URL.revokeObjectURL(newCoverUrl.value);
+    const file = imageInput.value?.files?.[0];
+    newCoverUrl.value = file ? URL.createObjectURL(file) : null;
+    coverFraming.reset();
+};
+
 const currentImageUrl = computed(() => {
     if (!currentImageFile.value || !currentCollectionId.value) return null;
     return `${pbPublicUrl}/api/files/${currentCollectionId.value}/${id}/${currentImageFile.value}`;
@@ -251,6 +275,8 @@ onMounted(async () => {
             ? (img[0] ?? null)
             : (img ?? null);
         currentCollectionId.value = record.collectionId;
+        framingSupported.value = "cover_zoom" in record;
+        coverFraming.load(record);
         loaded.value = true;
     }
 });
@@ -269,6 +295,7 @@ const handleSubmit = async () => {
         data.append("published", String(form.published));
         const image = imageInput.value?.files?.[0];
         if (image) data.append("cover", image);
+        if (framingSupported.value) coverFraming.appendTo(data);
         await pb.collection("posts").update(id, data);
         await navigateTo("/admin/posts");
     } catch (e: any) {
