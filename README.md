@@ -73,6 +73,49 @@ unset, only an already-absolute image (a PocketBase file URL) is emitted and
 `og:url` is skipped — so a site with no `SITE_URL` and only a bundled `/og.png`
 gets a text-only card, not a broken image.
 
+## Image framing (focal point + zoom)
+
+A fixed-aspect frame with `object-cover` centre-crops whatever it is given, so
+an off-centre or distant subject gets cut badly. Framing lets an editor pick
+the focal point and zoom in. It is **non-destructive**: the upload is never
+touched; three numbers are stored beside the image and applied in CSS.
+
+**Convention.** For a single-file image field `X`, the same record carries
+number fields `X_focal_x`, `X_focal_y` (0–100) and `X_zoom` (1–3, see
+`FRAMING_MAX_ZOOM` in `utils/focalPoint.ts`). The site adds those three fields
+in its own migration. Missing or empty values mean centre, no zoom — an
+un-framed image renders exactly as before. PocketBase reads an empty number as
+`0`, so **zoom below 1 is what marks a record as never framed**; an editor must
+always save all three numbers together.
+
+- **Admin:** `<CpFocalPicker :src v-model:focal-x v-model:focal-y v-model:zoom v-model:fit aspect="4/3" />`.
+  Pass the **original** file URL (no `?thumb=`) and the `aspect` of the frame
+  the image displays in. The picker is that one frame, showing the real crop;
+  the editor drags the photo inside it to pan (`panFocal`) and zooms with the
+  slider. `aspect="auto"` is for an image the site shows at its own shape (no
+  fixed frame): zoom then crops within the photo's proportions. Render those
+  with the framing style on a plain `w-full` `<img>` inside an
+  `overflow-hidden` wrapper.
+- **Editor state:** `useFramingForm('X')` gives `{ framing, load, reset, appendTo }`
+  for a single-file field, so every sibling is saved together.
+- **Render:** `<CpFramedImage :record :field class="aspect-[4/3]" />`, or on an
+  existing `<img>`: `:style="useImageFraming(record, 'X').style.value"`. The
+  `<img>` must be `w-full h-full object-cover` inside an `overflow-hidden`
+  frame, or the zoom spills out.
+
+**Show whole photo.** A fourth sibling, `X_fit` (bool), is for a photo the
+wrong shape for its frame: it is shown uncropped, pan and zoom are ignored, and
+`CpFramedImage` fills the leftover space with a blurred copy of the same file.
+A bare `<img :style>` gets the uncropped photo but no backdrop — use
+`CpFramedImage` (it also takes an explicit `:src` + `:framing`).
+
+**Multi-file fields** (`maxSelect > 1`) cannot use three numbers, so they carry
+one JSON sibling `X_framing` — `{ "<filename>": { x, y, zoom } }` — read with
+`readFileFraming(record, 'X', filename)`. PocketBase renames uploads, so a new
+file's framing can only be keyed after the save: `buildFramingMap` matches new
+uploads to their saved names by order, and the editor writes the map in a
+second update.
+
 ## Account & password management
 
 The layer ships self-service password flows on top of PocketBase's `users`
