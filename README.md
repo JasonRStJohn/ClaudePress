@@ -109,6 +109,11 @@ wrong shape for its frame: it is shown uncropped, pan and zoom are ignored, and
 A bare `<img :style>` gets the uncropped photo but no backdrop — use
 `CpFramedImage` (it also takes an explicit `:src` + `:framing`).
 
+**Post covers.** The layer's post editor (`/admin/posts/[id]`) shows a `CpFocalPicker`
+for the cover when the site's `posts` collection has `cover_focal_x`, `cover_focal_y`
+and `cover_zoom` (add them in the site's migration); without them the editor is
+unchanged. A brand-new post has no record to read, so it is framed after the first save.
+
 **Multi-file fields** (`maxSelect > 1`) cannot use three numbers, so they carry
 one JSON sibling `X_framing` — `{ "<filename>": { x, y, zoom } }` — read with
 `readFileFraming(record, 'X', filename)`. PocketBase renames uploads, so a new

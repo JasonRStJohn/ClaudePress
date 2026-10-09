@@ -12,6 +12,7 @@
       ref="frame"
       class="w-72 max-w-full border border-slate-300 bg-slate-100 select-none touch-none focus:outline-none focus:ring-2 focus:ring-blue-500"
       :class="[
+        round ? 'rounded-full overflow-hidden' : '',
         disabled ? 'opacity-50 pointer-events-none' : '',
         !canPan ? 'cursor-default' : dragging ? 'cursor-grabbing' : 'cursor-grab',
       ]"
@@ -88,6 +89,8 @@ const props = withDefaults(defineProps<{
    * proportions, so zoom crops within them and "show whole photo" is moot.
    */
   aspect?: string
+  /** Clip the frame to a circle, for an image the site shows in one. Use with a square aspect. */
+  round?: boolean
   disabled?: boolean
 }>(), { aspect: '4/3' })
 
