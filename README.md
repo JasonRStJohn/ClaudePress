@@ -35,7 +35,7 @@ small site needs:
 - `settings` — singleton: site name, tagline, logo, favicon, `og_image`, socials, contact info
 - `navigation` — hierarchical nav items (parent/child, label, href, order)
 - `pages` — slug, title, body (rich text), SEO fields, published flag
-- `posts` — blog posts with category relation, cover image, excerpt
+- `posts` — blog posts with category relation, cover image, excerpt, and a `pinned` "Pin to top" flag (`1710000007`; `usePosts` sorts pinned first, then newest)
 - `post_categories` — post taxonomy
 - `documents` — PDFs / files with category relation
 - `document_categories` — document taxonomy

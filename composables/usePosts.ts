@@ -1,5 +1,6 @@
 /**
- * Paginated post listing with optional category filter.
+ * Paginated post listing with optional category filter. Pinned posts
+ * ("Pin to top") come first, then newest first.
  */
 export const usePosts = async (opts: {
   page?: number
@@ -15,12 +16,19 @@ export const usePosts = async (opts: {
     filter = `category.slug = "${opts.category}"`
   }
 
+  const list = (sort: string) =>
+    pb.collection('posts').getList(page, perPage, { sort, expand: 'category', filter })
+
   try {
-    return await pb.collection('posts').getList(page, perPage, {
-      sort: '-published_at',
-      expand: 'category',
-      filter,
-    })
+    try {
+      return await list('-pinned,-published_at')
+    } catch (e: any) {
+      // A backend that hasn't run 1710000007_posts_pinned yet (frontend
+      // deployed ahead of it) rejects the unknown sort field with a 400.
+      // Fall back to date order rather than rendering no posts at all.
+      if (e?.status !== 400) throw e
+      return await list('-published_at')
+    }
   } catch (e) {
     console.error('[ClaudePress] failed to load posts', e)
     return { page: 1, perPage, totalItems: 0, totalPages: 0, items: [] }

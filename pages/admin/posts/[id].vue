@@ -169,6 +169,18 @@
                 >
             </label>
 
+            <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                    v-model="form.pinned"
+                    type="checkbox"
+                    :disabled="saving"
+                    class="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span class="text-sm font-medium text-slate-700"
+                    >Pin to top</span
+                >
+            </label>
+
             <div
                 v-if="saveError"
                 class="text-sm text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2"
@@ -230,6 +242,7 @@ const form = reactive({
     category: "",
     published_at: "",
     published: false,
+    pinned: false,
 });
 
 const coverFraming = useFramingForm("cover", { fit: false });
@@ -270,6 +283,7 @@ onMounted(async () => {
             ? record.published_at.slice(0, 10)
             : "";
         form.published = record.published ?? false;
+        form.pinned = record.pinned ?? false;
         const img = record.cover;
         currentImageFile.value = Array.isArray(img)
             ? (img[0] ?? null)
@@ -293,6 +307,7 @@ const handleSubmit = async () => {
         data.append("category", form.category);
         if (form.published_at) data.append("published_at", form.published_at);
         data.append("published", String(form.published));
+        data.append("pinned", String(form.pinned));
         const image = imageInput.value?.files?.[0];
         if (image) data.append("cover", image);
         if (framingSupported.value) coverFraming.appendTo(data);
